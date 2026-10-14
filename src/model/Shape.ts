@@ -23,6 +23,11 @@ export abstract class Shape extends Element {
     return NumberFormat.parse(this.raw(name) ?? '0');
   }
 
+  /** Renders a geometry attribute for display, e.g. `w=800`. */
+  protected geometryText(name: string): string {
+    return NumberFormat.format(this.numberOf(name));
+  }
+
   protected putNumber(name: string, value: number): void {
     this.put(name, NumberFormat.format(value));
   }
