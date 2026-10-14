@@ -15,7 +15,8 @@
     "test": "node --test --test-isolation=none \"tests/**/*.test.ts\"",
     "test:watch": "node --test --watch --test-isolation=none \"tests/**/*.test.ts\"",
     "coverage": "node --test --test-isolation=none --experimental-test-coverage \"tests/**/*.test.ts\"",
-    "check": "npm run typecheck && npm test"
+    "arch:check": "node tools/arch-check.ts",
+    "check": "npm run typecheck && npm test && npm run arch:check"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
