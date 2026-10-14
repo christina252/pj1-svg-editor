@@ -71,7 +71,8 @@ export class EditorError extends Error {
   /** R-ERR18 */ static cannotMoveIntoDescendant(id: string): EditorError {
     return new EditorError(`cannot move a container into its own descendant: ${id}`);
   }
-  /** D12 — geometry commands on a preserved foreign element */ static unsupportedElement(id: string): EditorError {
+  /** R-ERR21 (D12) — geometry commands on a preserved foreign element */
+  static unsupportedElement(id: string): EditorError {
     return new EditorError(`unsupported element: ${id}`);
   }
   /** D16 */ static nothingToUndo(): EditorError {

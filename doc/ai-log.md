@@ -82,6 +82,30 @@
 - **可复核性**：这条决策的每一步都有本机真实命令输出作证据；如果换到没有沙箱限制的机器上，
   vitest 本可用，但 `node:test` 同样可用且更少依赖，故不回退。
 
+## 2026-10-14 · S2 · 实现领域模型（拆成 6 个小提交）
+
+- **做了什么**：`Element`（抽象基类）→ `Shape` + 5 个叶子类 → `Container`/`Group` → `ForeignElement` → `Document` →
+  `NumberFormat`/`StyleAttributes`，外加架构守护脚本 `tools/ArchitectureChecker.ts`。
+- **本步的关键设计取舍（都写进了 `docs/plan.md` 的决策记录）**：
+  1. **D14：不建 id 注册表**。最初的计划里有一个可变的 `IdRegistry`，写的时候意识到：树和注册表是两份状态，
+     一旦某条路径忘了同步（删除、reparent、undo 恢复）就会出现"id 明明在表里、元素却找不到"的幽灵 bug。
+     改为让 `Document.find/hasId/nextFreeId` 直接走树遍历——只有一份真相，不可能不同步。
+  2. **错误类型必须搬家**：模型层要抛 `no such shape: r9` 这类规格错误，而错误类原本在 `src/cli/`，
+     会让 `model → cli` 反向依赖。于是独立出 `src/errors/EditorError.ts`，并把 21 条错误文案集中成工厂方法，
+     规格 §4.2 与我们的补充项一眼可查、可被测试逐个断言。
+  3. **D13：tree 的字段规则按 spec 样例固化**（rect 显示 `w/h` 缩写、line 显示两点、text 带引号内容），
+     否则 S6 的黄金测试无从比对。
+- **遇到的真实问题**：
+  1. `npm run typecheck` 报 `TS6133: 'value' is declared but its value is never read`（`Container.setAttribute` 只用到 name）。
+     → 参数改名 `_value`。**注意测试此时是全绿的**：`node --test` 只做类型剥离、不做类型检查，
+     这正是"typecheck 与 test 两道闸门都要有"的直接证据。
+  2. 第一版 `Rect.ts` 我多写了一个 `walk()` 覆写和一个多余的 `NumberFormat` 再导出——属于把基类已有能力重复实现。
+     在提交前删掉了（保持"子类只声明自己特有的东西"）。
+- **工具的可信度问题（主动加的一步）**：架构守护脚本第一版跑出来是 "no dependency violations"——
+  但一个永远说"没问题"的脚本毫无价值。于是补了 `tests/fixtures/arch/model/Bad.ts` 这个**故意违规**的样本，
+  断言脚本确实能抓到 `model must not depend on cli`，并把"项目自身无违规"也做成一个测试。
+  现在 `npm run check` = 类型检查 + 测试 + 架构检查三合一。
+
 ## 2026-10-14 · S1 · 新增 `src/ports/`（架构调整，主动发现的反向依赖）
 
 - **做了什么**：实现命令层时，命令对象需要"把结果打印出来"的能力。

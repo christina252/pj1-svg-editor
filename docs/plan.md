@@ -68,6 +68,11 @@
 | R-ERR14 | （补充）命令语法/参数个数错误 | `error: usage: <命令语法>` |
 | R-ERR15 | （补充，D10）未闭合的双引号 | `error: unterminated quote in command line` |
 | R-ERR16 | （补充）未知命令 | `error: unknown command: foo. type 'help' for commands` |
+| R-ERR17 | （补充，D15）几何属性给了非数字 | `error: invalid number: <value>` |
+| R-ERR18 | （补充，D12）`addto` 把容器移进自己的后代 | `error: cannot move a container into its own descendant: <id>` |
+| R-ERR19 | （补充，D16）`undo` 时没有可撤销的操作 | `error: nothing to undo` |
+| R-ERR20 | （补充，D16）`redo` 时没有可重做的操作 | `error: nothing to redo` |
+| R-ERR21 | （补充，D12）对 foreign 元素直接做几何操作 | `error: unsupported element: <id>` |
 
 > R-ERR6 在本阶段不会被触发（`box` 插件类型不实现，见 R-SCOPE1），但错误通道与文案要实现并测试，
 > 以便插件化阶段零改动接入。
@@ -105,9 +110,15 @@
 | D6 | TS / 运行方式 | 固定 TypeScript **5.9.3**（不用最新 7.x）；**直接由 Node 24 原生类型剥离运行 `.ts`**（`npm run cli` = `node src/cli/main.ts`），`tsc` 负责类型检查与 `dist/` 构建；ESM + NodeNext，相对导入写 **`.ts` 后缀**（构建时由 `rewriteRelativeImportExtensions` 改写为 `.js`）；开启 `erasableSyntaxOnly` 保证语法可剥离 | 7.x 与测试生态兼容性未知；`tsx` 在本机沙箱下会 `spawn EPERM`（见 ai-log），原生剥离零依赖、零子进程，且 `tsc` 仍能全量类型检查 | 全局 |
 | D11 | 测试框架 | 使用 **Node 内置 `node:test`**（`node --test --test-isolation=none "tests/**/*.test.ts"`），断言用 `node:assert/strict`；覆盖率用 `--experimental-test-coverage` | `vitest → vite → rolldown` 在 Windows 上会调用 `exec("net use")`（管道 stdio），在本机沙箱触发 `EPERM`（已定位到 vite 源码 `optimizeSafeRealPathSync`）；`node:test` 零依赖、零子进程，且能直接运行 `.ts` | `tests/`、`package.json` |
 | D7 | 编码 | 全链路显式 UTF-8（文件读写 + 标准输出），并单列中文/引号往返测试 | 会话样例含中文 text 内容（`"开始"`、`"处理数据"`） | `src/io/`、`src/cli/` |
-| D8 | `read` 遇到非 6 类元素（`<path>`、`<polygon>`、`<defs>` 等） | 作为 **ForeignElement 原样保留**（属性与子树都不丢，能整树回写），不需要 id、不参与 id 补全与地址解析；`tree` 中以 `(foreign)` 标注 | 未定义行为取"最小惊讶"：读入外部 SVG 不得丢内容；本阶段不为它们实现编辑语义 | `src/io/`、`src/model/` |
+| D8 | `read` 遇到非 6 类元素（`<path>`、`<polygon>`、`<defs>` 等） | 作为 **ForeignElement 原样保留**（tag/属性/子树都不丢，能整树回写）；**同样参与自动补 id**（缺 id 时按 `标签名+序号` 分配并警告），因此可被 `tree`/`delete`/`group`/`front` 寻址；`tree` 中标注 `(foreign)`；几何语义见 D12 | 未定义行为取"最小惊讶"：读入外部 SVG 不得丢内容；id 规则统一适用于所有元素，省掉"哪些元素算图形"这种无法穷举的分类（S2 修订，见第 8 节） | `src/io/`、`src/model/` |
 | D9 | `set` 作用于容器 `<g>` | 允许 `fill`/`stroke`/`stroke-width`（SVG 继承语义，作用于子孙）；几何属性报 R-ERR13 | 白名单对 `g` 无几何属性定义；颜色类属性在 SVG 中可继承，语义自洽 | `src/commands/` |
 | D10 | 文本内容中的引号 | 本阶段不支持转义，`"` 需成对出现；未闭合引号报 `error: unterminated quote in command line`（R-ERR15，S1 实现时从"报 usage"细化为专用文案，见修订记录） | spec 未定义转义规则，明确边界优于猜测 | `src/cli/Tokenizer.ts` |
+| D12 | foreign 元素上的几何命令 | 直接对它执行 `move`/`scale`/`set` → `error: unsupported element: <id>`（R-ERR21）；祖先容器的 `move`/`scale` **跳过** foreign 子树（不报错） | 编辑器不解释未知元素的几何，但不能因为文件里有一个 `<path>` 就让整组移动失败 | `src/model/ForeignElement.ts`、`src/commands/` |
+| D13 | `tree` / `show` 的字段规则 | `tree` 严格按 spec 样例：rect 用 `x/y/w/h`+fill、circle/ellipse 用 `cx/cy/rx/ry`+fill、line 用 `(x1,y1) -> (x2,y2)`、text 用 `(x,y) "内容"`、容器不显示属性；`show` 用**完整属性名**并逐行列出 | spec 只给了样例，必须固化成规则才能写黄金测试与一致性自查 | `src/model/*.ts` |
+| D14 | id 唯一性 | 由**树遍历**回答（`Document.find` / `hasId` / `nextFreeId`），不维护第二份可变注册表 | 树与注册表一旦不同步，就会出现"id 存在但元素找不到"的幽灵 bug；本阶段文档规模小，遍历代价可忽略 | `src/model/Document.ts` |
+| D15 | 数值格式 | 几何属性统一按 **6 位小数**归一后写出（`NumberFormat`），非法数字报 R-ERR17 | 避免 `1.1` 缩放后写出 `110.00000000000001`，也让 undo/redo 的数值比较稳定 | `src/model/NumberFormat.ts` |
+| D16 | 空栈时的 undo/redo | `error: nothing to undo` / `error: nothing to redo`（R-ERR19/20） | spec 未定义；必须有明确反馈，而不是静默无操作让用户以为命令失效 | `src/history/` |
+| D17 | viewBox 保留 | 读入文件若带 `viewBox` 则**原样保留**；`canvas <w> <h>` 改尺寸时重新生成为 `0 0 w h` | round-trip 安全优先；尺寸改了还沿用旧 viewBox 会让坐标系与画布不一致 | `src/model/Document.ts`、`src/io/` |
 
 ## 7. 里程碑（细则见会话中确认的步骤表）
 
@@ -136,3 +147,7 @@
 | 2026-10-14 | S1 | **新增模块 `src/ports/`**：`OutputSink` 由 `src/cli/` 迁入 | 命令层需要输出能力，若直接依赖 `cli/` 会形成 `commands → cli` 的反向依赖 |
 | 2026-10-14 | S1 | `CommandCatalog`（命令目录）放在 `src/commands/` 而非 `src/registry/` | 目录描述的是命令本身；注册表只负责"名字→实现"的分派，避免 commands 与 registry 互相依赖 |
 | 2026-10-14 | S1 | 新增 R-ERR15 / R-ERR16 两条错误契约；D10 的文案细化 | 规格未定义未闭合引号与未知命令的行为，实现时必须钉死 |
+| 2026-10-14 | S2 | `CliError` 更名为 `EditorError` 并移入 `src/errors/` | 模型层/命令层也要抛规格里的错误，错误类留在 `cli/` 会造成反向依赖 |
+| 2026-10-14 | S2 | D8 修订：foreign 元素**也参与自动补 id**、可寻址 | 避免"哪些元素算图形"的分类难题；id 规则对全部元素统一 |
+| 2026-10-14 | S2 | 新增决策 D12–D17、错误契约 R-ERR17–R-ERR21 | 规格未定义的行为（foreign 的几何命令、空 undo 栈、数值精度、viewBox）在 S2 实现时被碰到，必须当下钉死 |
+| 2026-10-14 | S2 | 新增模块 `src/errors/`；依赖规则表加入 `errors`（不依赖任何模块） | 见上一条；守护脚本要求新模块显式登记规则 |
