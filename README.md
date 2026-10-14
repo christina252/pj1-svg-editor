@@ -30,13 +30,14 @@ npm run cli --silent < examples/flowchart.script
 
 ```
 src/
-  cli/        命令行外壳（REPL、解析、格式化输出）
-  commands/   命令层（Command 模式，一条命令一个类）
+  cli/        命令行外壳（REPL、解析、终端适配器）
+  commands/   命令层（Command 模式，一条命令一个类 + 命令目录）
   model/      领域模型（元素树、图形类、文档、id 注册表）
   geometry/   几何与坐标运算
   io/         SVG 读写（序列化 / 解析）
   history/    撤销重做栈
-  registry/   命令注册表与图形工厂（允许按名字分派的两处）
+  registry/   按名字分派的两处（命令注册表、图形工厂）+ 图形类型注册
+  ports/      端口接口（应用层依赖的抽象，由 cli/io 实现）
 doc/          课程要求的项目文档
 docs/         需求矩阵、决策记录、协作日志
 tests/        单元测试与黄金回放测试

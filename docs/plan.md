@@ -9,7 +9,7 @@
 
 | 编号 | 约定 | spec 出处 |
 |---|---|---|
-| R-C1 | 提示符 `svg> `，REPL 逐行读入；`#` **开头**的行为注释（便于把命令序列存脚本回放） | §2 |
+| R-C1 | 提示符 `svg> `，REPL 逐行读入；**行首**（可含前导空白）为 `#` 的行是注释（便于把命令序列存脚本回放）；**行内的 `#` 是普通字符**，如 `create rect bg 0 0 800 600 #ffffff` | §2 |
 | R-C2 | 一律以 **id** 定位图形；每个图形元素（含 `<g>`）都有唯一、**大小写敏感**的 id | §2 |
 | R-C3 | `create` / `group` 的 id 为**必填**参数（用户显式命名） | §2 |
 | R-C4 | 读入外部 SVG 缺 id 时按 `标签名+序号` 自动分配并打印 `warning: assigned id rect1 to unnamed <rect>` | §2 |
@@ -66,6 +66,8 @@
 | R-ERR12 | （补充，决策 D5）`init` 后 `save` 无参数 | `error: no file path. use 'save <file.svg>'` |
 | R-ERR13 | （补充）未知属性 | `error: unknown attribute: <attr>`（spec §4.1） |
 | R-ERR14 | （补充）命令语法/参数个数错误 | `error: usage: <命令语法>` |
+| R-ERR15 | （补充，D10）未闭合的双引号 | `error: unterminated quote in command line` |
+| R-ERR16 | （补充）未知命令 | `error: unknown command: foo. type 'help' for commands` |
 
 > R-ERR6 在本阶段不会被触发（`box` 插件类型不实现，见 R-SCOPE1），但错误通道与文案要实现并测试，
 > 以便插件化阶段零改动接入。
@@ -105,7 +107,7 @@
 | D7 | 编码 | 全链路显式 UTF-8（文件读写 + 标准输出），并单列中文/引号往返测试 | 会话样例含中文 text 内容（`"开始"`、`"处理数据"`） | `src/io/`、`src/cli/` |
 | D8 | `read` 遇到非 6 类元素（`<path>`、`<polygon>`、`<defs>` 等） | 作为 **ForeignElement 原样保留**（属性与子树都不丢，能整树回写），不需要 id、不参与 id 补全与地址解析；`tree` 中以 `(foreign)` 标注 | 未定义行为取"最小惊讶"：读入外部 SVG 不得丢内容；本阶段不为它们实现编辑语义 | `src/io/`、`src/model/` |
 | D9 | `set` 作用于容器 `<g>` | 允许 `fill`/`stroke`/`stroke-width`（SVG 继承语义，作用于子孙）；几何属性报 R-ERR13 | 白名单对 `g` 无几何属性定义；颜色类属性在 SVG 中可继承，语义自洽 | `src/commands/` |
-| D10 | 文本内容中的引号 | 本阶段不支持转义，`"` 需成对出现；未闭合引号报 R-ERR14 | spec 未定义转义规则，明确边界优于猜测 | `src/cli/parser` |
+| D10 | 文本内容中的引号 | 本阶段不支持转义，`"` 需成对出现；未闭合引号报 `error: unterminated quote in command line`（R-ERR15，S1 实现时从"报 usage"细化为专用文案，见修订记录） | spec 未定义转义规则，明确边界优于猜测 | `src/cli/Tokenizer.ts` |
 
 ## 7. 里程碑（细则见会话中确认的步骤表）
 
@@ -120,3 +122,17 @@
 | S6 | 质量保证（单测、黄金回放、渲染核对、边界矩阵、覆盖率） | `test: …` |
 | S7 | 文档（架构/过程记录/自查/质量保证 + PlantUML 图 + 示例） | `docs: …` |
 | S8 | 收尾（历史梳理、tag `final`、干净 clone 验收） | `chore(release): …` |
+
+---
+
+## 8. 修订记录（方案 vs 实现的差异）
+
+> 课程要求"实现完成后对照方案如实回答：实际目录与方案是否一致？不一致之处是否已记入修订记录？"——本节即该修订记录，边做边记。
+
+| 日期 | 阶段 | 修订 | 原因 |
+|---|---|---|---|
+| 2026-10-14 | S0 | `engines` 定为 `node >= 24`；测试框架由 vitest 改为 Node 内置 `node:test`（决策 D11） | vitest→vite→rolldown 在本机沙箱会 `exec("net use")` 触发 EPERM（详见 ai-log） |
+| 2026-10-14 | S0 | D6 由"tsx 运行"改为"Node 原生类型剥离运行 `.ts`" | tsx 需要 spawn 子进程，本机沙箱 EPERM |
+| 2026-10-14 | S1 | **新增模块 `src/ports/`**：`OutputSink` 由 `src/cli/` 迁入 | 命令层需要输出能力，若直接依赖 `cli/` 会形成 `commands → cli` 的反向依赖 |
+| 2026-10-14 | S1 | `CommandCatalog`（命令目录）放在 `src/commands/` 而非 `src/registry/` | 目录描述的是命令本身；注册表只负责"名字→实现"的分派，避免 commands 与 registry 互相依赖 |
+| 2026-10-14 | S1 | 新增 R-ERR15 / R-ERR16 两条错误契约；D10 的文案细化 | 规格未定义未闭合引号与未知命令的行为，实现时必须钉死 |

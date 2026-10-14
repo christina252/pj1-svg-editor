@@ -82,6 +82,37 @@
 - **可复核性**：这条决策的每一步都有本机真实命令输出作证据；如果换到没有沙箱限制的机器上，
   vitest 本可用，但 `node:test` 同样可用且更少依赖，故不回退。
 
+## 2026-10-14 · S1 · 新增 `src/ports/`（架构调整，主动发现的反向依赖）
+
+- **做了什么**：实现命令层时，命令对象需要"把结果打印出来"的能力。
+- **发现**：`OutputSink` 接口最初放在 `src/cli/`（因为终端适配器在那里实现它）。但命令层若 `import type { OutputSink } from '../cli/OutputSink.ts'`，
+  依赖方向就变成 **commands → cli**，而 `cli/main.ts` 又必须依赖 commands 才能注册命令 —— 形成模块级双向依赖，
+  正是架构方案里"违反规则的依赖即为待处理项"要抓的东西。
+- **处置**：新增 `src/ports/` 只放**接口**（端口），`OutputSink` 迁入其中；
+  `cli/` 与 `io/` 提供实现（适配器）。依赖方向固定为 `cli → commands → ports`，`cli → ports`。
+  同时把"命令目录 `CommandCatalog`"放进 `src/commands/`（它描述命令本身），
+  `src/registry/` 只保留"名字 → 实现"的分派（避免 commands 与 registry 互相依赖）。
+- **意义**：这是**在没有报错的情况下**由依赖规则审查发现的架构问题，比等测试失败更早；
+  已记入 `docs/plan.md` 第 8 节修订记录，供一致性自查引用。
+
+## 2026-10-14 · S1 · 实现 CLI 外壳
+
+- **做了什么**：Tokenizer（引号 / 行首 `#` 注释）、可注入的 `LineSource` / `OutputSink`、
+  `ScriptLineSource`（回放）、`Repl`（读一行→执行一条→打印）、`CommandCatalog`（19 条命令的语法与摘要）、
+  `CommandRegistry`、`HelpCommand`、`CliError`。
+- **验证**：
+  - `npm run typecheck` / `npm run build` 均 exit 0；
+  - `npm test` 18 passed；
+  - 端到端回放 `cmd /c "npm run cli < examples\hello.script"` 与 `node dist\cli\main.js < examples\hello.script`
+    都输出完整 help 并在遇到未知命令时报错后继续运行（exit 0）。
+- **两个真实的小问题（都是被工具链抓到的，不是凭空写的）**：
+  1. `tests/support/BufferSink.ts` 的 import 路径写错（`../ports/…` 应为 `../../src/ports/…`）→ **`npm run typecheck` 直接报错**。
+     说明"类型检查 + 测试"两道闸门确实在拦错误。
+  2. 测试"非交互模式不打印提示符"**假失败**：断言用真实提示符 `svg> ` 去匹配输出，
+     而 help 里 `read <file.svg>` 这一行的**列填充空格**恰好拼出了 `svg> ` 子串。
+     → 修正为测试专用提示符 `test> `（并在测试里注释了原因）。
+     这条提醒：**断言必须避开与输出内容可能碰撞的字符串**，否则会得到"看起来通过、其实没测到"的假象。
+
 ## 2026-10-14 · S0 · 工作环境约定
 
 - **背景**：本机 git 仓库由本人建在 `C:\pj1-svg-editor`（尚无提交），但 AI 的写入沙箱只覆盖 `C:\工作区`。
