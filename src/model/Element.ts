@@ -39,6 +39,26 @@ export abstract class Element {
     return `${this.tagName}#${this.id}`;
   }
 
+  /** Children in document order; a leaf has none (Container overrides this). */
+  get children(): readonly Element[] {
+    return [];
+  }
+
+  /** Text content of the element, e.g. the label of a `<text>` (spec §0.1). */
+  textContent(): string {
+    return '';
+  }
+
+  /**
+   * Adds an attribute without whitelist checking.
+   *
+   * Used when a document is loaded: attributes this editor does not model
+   * (`class`, `data-*`, `transform`, …) must survive the round trip (D8).
+   */
+  defineAttribute(name: string, value: string): void {
+    this.put(name, value);
+  }
+
   /** Attributes in output order; `id` and the text content are handled apart. */
   attributes(): ReadonlyMap<string, string> {
     return this.#attributes;

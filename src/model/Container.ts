@@ -16,7 +16,7 @@ export abstract class Container extends Element {
   }
 
   /** Children in document order — the order they are painted in. */
-  get children(): readonly Element[] {
+  override get children(): readonly Element[] {
     return this.#children;
   }
 

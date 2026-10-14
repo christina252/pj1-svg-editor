@@ -26,6 +26,10 @@ export class Text extends Shape {
     return this.#content;
   }
 
+  override textContent(): string {
+    return this.#content;
+  }
+
   protected override geometryNames(): readonly string[] {
     return ['x', 'y'];
   }
