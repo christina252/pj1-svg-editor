@@ -1,0 +1,8 @@
+# Replay script example (S1: only `help` exists yet).
+# Lines starting with '#' are comments.
+# Run with:  npm run cli --silent < examples/hello.script
+
+help
+
+# an unknown command is reported without aborting the session
+frobnicate
