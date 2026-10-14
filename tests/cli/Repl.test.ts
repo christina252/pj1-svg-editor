@@ -5,6 +5,7 @@ import { EditorError } from '../../src/errors/EditorError.ts';
 import { Repl } from '../../src/cli/Repl.ts';
 import { ScriptLineSource } from '../../src/cli/ScriptLineSource.ts';
 import { CommandCatalog } from '../../src/commands/CommandCatalog.ts';
+import { EditorSession } from '../../src/commands/EditorSession.ts';
 import { HelpCommand } from '../../src/commands/HelpCommand.ts';
 import type { Command } from '../../src/commands/Command.ts';
 import { CommandRegistry } from '../../src/registry/CommandRegistry.ts';
@@ -38,6 +39,7 @@ function buildSession(
     sink,
     registry,
     catalog,
+    session: new EditorSession(),
     banner: BANNER,
     prompt: TEST_PROMPT,
     showPrompt: options.showPrompt ?? false,

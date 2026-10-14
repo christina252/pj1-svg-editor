@@ -4,6 +4,7 @@ import { Tokenizer } from './Tokenizer.ts';
 import type { OutputSink } from '../ports/OutputSink.ts';
 import type { CommandContext } from '../commands/CommandContext.ts';
 import type { CommandCatalog } from '../commands/CommandCatalog.ts';
+import type { EditorSession } from '../commands/EditorSession.ts';
 import type { CommandRegistry } from '../registry/CommandRegistry.ts';
 
 /** Everything the REPL needs; all of it is injected, nothing is global. */
@@ -12,6 +13,7 @@ export interface ReplOptions {
   readonly sink: OutputSink;
   readonly registry: CommandRegistry;
   readonly catalog: CommandCatalog;
+  readonly session: EditorSession;
   readonly banner: string;
   /** Printed before each input line, e.g. `svg> ` (spec §2). */
   readonly prompt: string;
@@ -71,6 +73,7 @@ export class Repl {
     const context: CommandContext = {
       out: this.#options.sink,
       catalog: this.#options.catalog,
+      session: this.#options.session,
     };
 
     try {

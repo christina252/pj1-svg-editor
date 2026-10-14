@@ -11,6 +11,7 @@ import { StdinLineSource } from './StdinLineSource.ts';
 import { StdoutSink } from './StdoutSink.ts';
 import { HelpCommand } from '../commands/HelpCommand.ts';
 import { CommandCatalog } from '../commands/CommandCatalog.ts';
+import { EditorSession } from '../commands/EditorSession.ts';
 import { CommandRegistry } from '../registry/CommandRegistry.ts';
 
 const catalog = CommandCatalog.default();
@@ -23,6 +24,7 @@ const repl = new Repl({
   sink: new StdoutSink(),
   registry,
   catalog,
+  session: new EditorSession(),
   banner: BANNER,
   prompt: 'svg> ',
   showPrompt: process.stdin.isTTY === true,
