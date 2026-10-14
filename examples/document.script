@@ -1,0 +1,7 @@
+# 文档类命令示例（S3）：新建画布 / 查看尺寸 / 修改尺寸
+# 运行： npm run cli --silent < examples/document.script
+
+init 400 200
+canvas
+canvas 800 600
+canvas

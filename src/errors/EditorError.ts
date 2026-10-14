@@ -75,6 +75,10 @@ export class EditorError extends Error {
   static unsupportedElement(id: string): EditorError {
     return new EditorError(`unsupported element: ${id}`);
   }
+  /** R-ERR22 (D18) — init/canvas with a non-positive size */
+  static canvasSizeMustBePositive(): EditorError {
+    return new EditorError('canvas size must be positive');
+  }
   /** D16 */ static nothingToUndo(): EditorError {
     return new EditorError('nothing to undo');
   }
