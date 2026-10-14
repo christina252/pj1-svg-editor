@@ -61,6 +61,11 @@ describe('Tokenizer', () => {
     assert.deepEqual(Tokenizer.tokenize('set t1 text ""'), ['set', 't1', 'text', '']);
   });
 
+  it('ignores a UTF-8 byte-order mark written by Windows editors', () => {
+    assert.deepEqual(Tokenizer.tokenize('\uFEFFinit 400 200'), ['init', '400', '200']);
+    assert.deepEqual(Tokenizer.tokenize('\uFEFF# comment'), []);
+  });
+
   it('reports an unterminated quote (D10 / R-ERR15)', () => {
     assert.throws(() => Tokenizer.tokenize('create text t1 20 40 "broken'), EditorError);
     assert.throws(
