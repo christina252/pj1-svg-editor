@@ -73,6 +73,8 @@
 | R-ERR19 | （补充，D16）`undo` 时没有可撤销的操作 | `error: nothing to undo` |
 | R-ERR20 | （补充，D16）`redo` 时没有可重做的操作 | `error: nothing to redo` |
 | R-ERR21 | （补充，D12）对 foreign 元素直接做几何操作 | `error: unsupported element: <id>` |
+| R-ERR22 | （补充，D18）`init`/`canvas` 给出的画布尺寸非正 | `error: canvas size must be positive` |
+| R-ERR23 | （补充，D19）文件存在但不是可用的 SVG | `error: invalid svg file: <path>` |
 
 > R-ERR6 在本阶段不会被触发（`box` 插件类型不实现，见 R-SCOPE1），但错误通道与文案要实现并测试，
 > 以便插件化阶段零改动接入。
@@ -119,6 +121,11 @@
 | D15 | 数值格式 | 几何属性统一按 **6 位小数**归一后写出（`NumberFormat`），非法数字报 R-ERR17 | 避免 `1.1` 缩放后写出 `110.00000000000001`，也让 undo/redo 的数值比较稳定 | `src/model/NumberFormat.ts` |
 | D16 | 空栈时的 undo/redo | `error: nothing to undo` / `error: nothing to redo`（R-ERR19/20） | spec 未定义；必须有明确反馈，而不是静默无操作让用户以为命令失效 | `src/history/` |
 | D17 | viewBox 保留 | 读入文件若带 `viewBox` 则**原样保留**；`canvas <w> <h>` 改尺寸时重新生成为 `0 0 w h` | round-trip 安全优先；尺寸改了还沿用旧 viewBox 会让坐标系与画布不一致 | `src/model/Document.ts`、`src/io/` |
+| D18 | 画布尺寸校验 | `init` / `canvas` 的宽高必须 > 0，否则 R-ERR22 | spec 未定义；0 或负的画布没有意义，与 scale 的正数要求保持一致的风格 | `src/commands/InitCommand.ts`、`CanvasCommand.ts` |
+| D19 | 文件不是 SVG | 根元素不是 `<svg>`、或 XML 无法解析 → R-ERR23 `invalid svg file: <path>`（与 R-ERR10 的"读不到文件"区分开） | 两类失败原因不同，用户需要知道是文件不存在还是文件内容不对 | `src/io/XmlParser.ts`、`SvgReader.ts` |
+| D20 | 已知叶子带子元素 | 如 `<text>a<tspan>b</tspan></text>` 无法用本阶段的模型表达 → **降级为 ForeignElement** 原样保留（不报错、不丢内容） | 与本阶段"读入不丢内容"的原则一致；强行只取 `#text` 会静默丢失 tspan | `src/registry/ShapeFactory.ts` |
+| D21 | 文件内 id 重复 | 后出现的元素改名（`nextFreeId`）并告警：`warning: id r1 already exists, assigned rect1 to <rect>` | 模型必须始终保证 id 唯一（R-C2）；直接报错会让一个可修复的文件完全打不开 | `src/io/SvgReader.ts` |
+| D22 | 文件的 `width`/`height` | 数值解析规则：纯数字或 `px` 后缀取数值，其余（`100%`、`10em`…）取默认值 800×600；**但原字符串始终原样回写**，只有 `canvas` 改尺寸后才换成数字 | `width="100%"` 是合法 SVG，写成 `width="100"` 会静默改变文件语义（与 D17 同一考虑） | `src/model/Document.ts`、`src/io/` |
 
 ## 7. 里程碑（细则见会话中确认的步骤表）
 
@@ -151,3 +158,8 @@
 | 2026-10-14 | S2 | D8 修订：foreign 元素**也参与自动补 id**、可寻址 | 避免"哪些元素算图形"的分类难题；id 规则对全部元素统一 |
 | 2026-10-14 | S2 | 新增决策 D12–D17、错误契约 R-ERR17–R-ERR21 | 规格未定义的行为（foreign 的几何命令、空 undo 栈、数值精度、viewBox）在 S2 实现时被碰到，必须当下钉死 |
 | 2026-10-14 | S2 | 新增模块 `src/errors/`；依赖规则表加入 `errors`（不依赖任何模块） | 见上一条；守护脚本要求新模块显式登记规则 |
+| 2026-10-14 | S3 | 新增端口 `ports/DocumentStore`（+`LoadedDocument`），实现放 `io/SvgDocumentStore` | 命令层若直接依赖 `io/`，就把 XML 库与文件系统拖进了应用层；端口让两侧可独立替换与测试 |
+| 2026-10-14 | S3 | 依赖规则更新：`ports → model`（`DocumentStore` 的参数类型是 Document）、`io → registry`（读取器要用图形工厂） | 规则表随真实需要演进，但不允许出现环：`io` 依赖 `registry`，而 `registry` 不依赖 `io` |
+| 2026-10-14 | S3 | `Repl` 改为注入 `services` 集合（`Omit<CommandContext,'out'>`） | 避免每加一个服务就改一次 Repl 的构造参数 |
+| 2026-10-14 | S3 | 新增决策 D18–D22 与错误契约 R-ERR22/23 | 规格未定义但实现中一定会碰到的情形（画布尺寸、非 SVG 文件、text 带子元素、重复 id、百分比尺寸） |
+| 2026-10-14 | S3 | `Tokenizer` 忽略行首 UTF-8 BOM | 真实 CLI 端到端回放时发现：Windows 编辑器存出的脚本首行命令会被读成 `\uFEFFinit` |

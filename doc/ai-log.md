@@ -82,6 +82,38 @@
 - **可复核性**：这条决策的每一步都有本机真实命令输出作证据；如果换到没有沙箱限制的机器上，
   vitest 本可用，但 `node:test` 同样可用且更少依赖，故不回退。
 
+## 2026-10-14 · S3 · 实现 SVG 读写与文档类命令（拆成 5 个小提交）
+
+- **做了什么**：`SvgWriter`（模型→SVG 文本）、`XmlParser`（唯一接触 fast-xml-parser 的地方）、
+  `ShapeFactory`（标签名→类，spec 允许的第二处按名分派）、`SvgReader`（SVG→模型，含自动补 id 与告警）、
+  `DocumentStore` 端口 + `SvgDocumentStore` 适配器，以及 `init`/`canvas`/`read`/`save` 四条文档类命令。
+- **验证**：`npm run check` 全绿（110 个测试 + 类型检查 + 架构检查）；真实 CLI 端到端跑
+  `read examples/other.svg → canvas → save .tmp/cli-out.svg`，产出文件与 spec §6 的示例结构一致。
+- **本步新增的架构决策**：
+  - **端口 `ports/DocumentStore`**：命令层要用"读文件/存文件"，但它绝不该知道 XML 库和文件系统。
+    于是命令只依赖端口，`io/SvgDocumentStore` 提供实现，组合根 `Application` 负责装配。
+    这条同时也把"命令层 → io 层"的依赖**消灭**了，而不是简单地允许它。
+  - **依赖规则随之更新**：`ports → model`、`io → registry`（读取器要用图形工厂）。
+    规则表不是一开始就完美，而是被真实需要推着走——但环是不允许的：`io → registry`，而 `registry` 不依赖 `io`。
+
+### 本步发现的真实问题（4 条）
+
+1. **空 `<g>` 到底写成 `<g/>` 还是 `<g></g>`？** 我先按直觉写了测试期望 `<g id="scene"></g>`，测试失败。
+   回头查 spec §4.1：`create g <id>` 给出的片段就是 **`<g id="scene"/>`（自闭合）**。
+   → 结论：**代码是对的，我的测试期望是错的**。改测试而不是改实现。
+   这条也说明"测试失败"不等于"代码有 bug"，先回规格确认。
+2. **`width="100%"` 被我"宽松解析"成了 100**。测试直接把这个错误暴露出来。
+   如果照原样写出 `width="100"`，同一个文件从"随窗口缩放"变成"固定 100px"——**静默改变文件语义**。
+   → 决策 D22：数值规则明确化（纯数字或 `px` 取数值，其余取默认），**但原字符串始终原样回写**，
+   与 D17（viewBox 保留）同一考虑。
+3. **真实 CLI 脚本第一行命令报 `unknown command`**。原因是 PowerShell 5.1 的 `Set-Content -Encoding UTF8`
+   会写 UTF-8 BOM（文件头 `EF BB BF`），首行被读成 `\uFEFFinit`。
+   → 修 `Tokenizer` 忽略行首 BOM 并把 BOM 视为空白；已在真实 CLI 上验证 BOM 脚本能正常跑。
+   这类问题**只有真的把 CLI 当程序跑一遍才会遇到**，进程内测试永远发现不了。
+4. **测试里硬编码输出行号，连续两次断言错位**（先是忘记 id 告警占了一行，再是 `read` 顺序）。
+   → 教训：黄金输出比对应当**整块对比**（`assert.deepEqual(lines.slice(1), [...])`），
+   而不是逐条下标取值；S6 的黄金回放测试按整块对比来写。
+
 ## 2026-10-14 · S2 · 实现领域模型（拆成 6 个小提交）
 
 - **做了什么**：`Element`（抽象基类）→ `Shape` + 5 个叶子类 → `Container`/`Group` → `ForeignElement` → `Document` →
