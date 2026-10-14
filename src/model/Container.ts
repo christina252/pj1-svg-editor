@@ -77,6 +77,10 @@ export abstract class Container extends Element {
     }
   }
 
+  override adopt(child: Element): void {
+    this.append(child);
+  }
+
   /** A container has no geometry of its own to show inline (spec §5.1). */
   override summary(): string {
     return '';

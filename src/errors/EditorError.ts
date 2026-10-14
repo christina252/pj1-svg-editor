@@ -79,6 +79,10 @@ export class EditorError extends Error {
   static canvasSizeMustBePositive(): EditorError {
     return new EditorError('canvas size must be positive');
   }
+  /** R-ERR23 (D19) — the file is not a usable SVG document */
+  static invalidSvgFile(path: string): EditorError {
+    return new EditorError(`invalid svg file: ${path}`);
+  }
   /** D16 */ static nothingToUndo(): EditorError {
     return new EditorError('nothing to undo');
   }

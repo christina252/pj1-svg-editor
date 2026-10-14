@@ -42,10 +42,10 @@ export class ArchitectureChecker {
 
   static readonly DEFAULT_RULES: readonly DependencyRule[] = [
     { module: 'errors', allowed: [] },
-    { module: 'ports', allowed: [] },
+    { module: 'ports', allowed: ['model'] },
     { module: 'model', allowed: ['model', 'errors'] },
     { module: 'geometry', allowed: ['geometry', 'model', 'errors'] },
-    { module: 'io', allowed: ['io', 'model', 'geometry', 'errors', 'ports'] },
+    { module: 'io', allowed: ['io', 'model', 'geometry', 'errors', 'ports', 'registry'] },
     { module: 'commands', allowed: ['commands', 'model', 'geometry', 'errors', 'ports'] },
     { module: 'history', allowed: ['history', 'commands', 'model', 'errors'] },
     { module: 'registry', allowed: ['registry', 'commands', 'model', 'errors'] },

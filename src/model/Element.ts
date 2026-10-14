@@ -82,6 +82,17 @@ export abstract class Element {
   /** Visits this element and, for containers, every descendant (document order). */
   abstract walk(visit: (element: Element) => void): void;
 
+  /**
+   * Takes one child while a document is being loaded.
+   *
+   * Containers accept it; a leaf refuses, because an element that cannot hold
+   * children must never silently lose them (the loader downgrades such an
+   * element to a ForeignElement instead, D20).
+   */
+  adopt(_child: Element): void {
+    throw new Error(`internal error: ${this.label()} cannot hold children`);
+  }
+
   /** Every element of this subtree except this one, in document order. */
   descendants(): Element[] {
     const result: Element[] = [];

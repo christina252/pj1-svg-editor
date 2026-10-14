@@ -21,6 +21,8 @@ export class Document extends Container {
   #width: number;
   #height: number;
   #viewBox: string | null = null;
+  #rawWidth: string | null = null;
+  #rawHeight: string | null = null;
   #sourcePath: string | null = null;
 
   private constructor(width: number, height: number) {
@@ -59,11 +61,35 @@ export class Document extends Container {
     return this.#height;
   }
 
-  /** `canvas <w> <h>`: resizing regenerates the viewBox (D17). */
+  /** `canvas <w> <h>`: resizing regenerates the viewBox (D17) and the size text. */
   resize(width: number, height: number): void {
     this.#width = width;
     this.#height = height;
     this.#viewBox = null;
+    this.#rawWidth = null;
+    this.#rawHeight = null;
+  }
+
+  /**
+   * Keeps the `width`/`height` attributes of a loaded file verbatim (D22).
+   *
+   * `width="100%"` is a perfectly valid SVG that has no numeric equivalent
+   * without a viewport; writing back `width="100"` would silently change what
+   * the file means.
+   */
+  setRawSize(width: string | null, height: string | null): void {
+    this.#rawWidth = width;
+    this.#rawHeight = height;
+  }
+
+  /** The width attribute as it should be written out. */
+  get widthText(): string {
+    return this.#rawWidth ?? NumberFormat.format(this.#width);
+  }
+
+  /** The height attribute as it should be written out. */
+  get heightText(): string {
+    return this.#rawHeight ?? NumberFormat.format(this.#height);
   }
 
   get viewBox(): string {

@@ -1,6 +1,5 @@
 import type { Document } from '../model/Document.ts';
 import type { Element } from '../model/Element.ts';
-import { NumberFormat } from '../model/NumberFormat.ts';
 import { XmlEscape } from './XmlEscape.ts';
 
 /**
@@ -29,8 +28,8 @@ export class SvgWriter {
   }
 
   #rootTag(document: Document): string {
-    const width = NumberFormat.format(document.width);
-    const height = NumberFormat.format(document.height);
+    const width = XmlEscape.attribute(document.widthText);
+    const height = XmlEscape.attribute(document.heightText);
     return `<svg xmlns="${SvgWriter.SVG_NAMESPACE}" width="${width}" height="${height}" viewBox="${XmlEscape.attribute(document.viewBox)}">`;
   }
 
