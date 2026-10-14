@@ -1,4 +1,4 @@
-import { CliError } from './CliError.ts';
+import { EditorError } from '../errors/EditorError.ts';
 
 const WHITESPACE = new Set([' ', '\t', '\r']);
 const COMMENT_MARKER = '#';
@@ -56,7 +56,7 @@ export class Tokenizer {
     }
 
     if (inQuotes) {
-      throw new CliError('unterminated quote in command line');
+      throw EditorError.unterminatedQuote();
     }
     if (tokenStarted) {
       tokens.push(current);

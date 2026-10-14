@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { CliError } from '../../src/cli/CliError.ts';
+import { EditorError } from '../../src/errors/EditorError.ts';
 import { Tokenizer } from '../../src/cli/Tokenizer.ts';
 
 describe('Tokenizer', () => {
@@ -62,7 +62,7 @@ describe('Tokenizer', () => {
   });
 
   it('reports an unterminated quote (D10 / R-ERR15)', () => {
-    assert.throws(() => Tokenizer.tokenize('create text t1 20 40 "broken'), CliError);
+    assert.throws(() => Tokenizer.tokenize('create text t1 20 40 "broken'), EditorError);
     assert.throws(
       () => Tokenizer.tokenize('create text t1 20 40 "broken'),
       /unterminated quote in command line/,

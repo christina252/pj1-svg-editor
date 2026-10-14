@@ -1,4 +1,4 @@
-import { CliError } from './CliError.ts';
+import { EditorError } from '../errors/EditorError.ts';
 import type { LineSource } from './LineSource.ts';
 import { Tokenizer } from './Tokenizer.ts';
 import type { OutputSink } from '../ports/OutputSink.ts';
@@ -82,7 +82,7 @@ export class Repl {
 
   #report(error: unknown): void {
     const { sink } = this.#options;
-    if (error instanceof CliError) {
+    if (error instanceof EditorError) {
       sink.line(`error: ${error.message}`);
       return;
     }

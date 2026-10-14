@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { BANNER } from '../../src/cli/banner.ts';
-import { CliError } from '../../src/cli/CliError.ts';
+import { EditorError } from '../../src/errors/EditorError.ts';
 import { Repl } from '../../src/cli/Repl.ts';
 import { ScriptLineSource } from '../../src/cli/ScriptLineSource.ts';
 import { CommandCatalog } from '../../src/commands/CommandCatalog.ts';
@@ -85,7 +85,7 @@ describe('Repl', () => {
     const failing: Command = {
       name: 'boom',
       execute() {
-        throw new CliError('no such shape: r9');
+        throw EditorError.noSuchShape('r9');
       },
     };
     const sink = await runSession(['boom', 'help'], { extraCommands: [failing] });
