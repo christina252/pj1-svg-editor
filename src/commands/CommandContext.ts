@@ -1,4 +1,5 @@
 import type { OutputSink } from '../ports/OutputSink.ts';
+import type { DocumentStore } from '../ports/DocumentStore.ts';
 import type { CommandCatalog } from './CommandCatalog.ts';
 import type { EditorSession } from './EditorSession.ts';
 
@@ -15,4 +16,6 @@ export interface CommandContext {
   readonly catalog: CommandCatalog;
   /** The current document and, later, its edit history. */
   readonly session: EditorSession;
+  /** Loading and saving documents; the SVG/disk details live behind this port. */
+  readonly store: DocumentStore;
 }

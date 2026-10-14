@@ -1,9 +1,13 @@
 import { CanvasCommand } from '../commands/CanvasCommand.ts';
 import type { Command } from '../commands/Command.ts';
 import { CommandCatalog } from '../commands/CommandCatalog.ts';
+import type { CommandContext } from '../commands/CommandContext.ts';
 import { EditorSession } from '../commands/EditorSession.ts';
 import { HelpCommand } from '../commands/HelpCommand.ts';
 import { InitCommand } from '../commands/InitCommand.ts';
+import { ReadCommand } from '../commands/ReadCommand.ts';
+import { SaveCommand } from '../commands/SaveCommand.ts';
+import { SvgDocumentStore } from '../io/SvgDocumentStore.ts';
 import { CommandRegistry } from '../registry/CommandRegistry.ts';
 import { BANNER } from './banner.ts';
 import type { LineSource } from './LineSource.ts';
@@ -19,11 +23,15 @@ import { Repl } from './Repl.ts';
  */
 export class Application {
   readonly #registry = new CommandRegistry();
-  readonly #catalog: CommandCatalog;
-  readonly #session = new EditorSession();
+  readonly #services: Omit<CommandContext, 'out'>;
 
   constructor() {
-    this.#catalog = CommandCatalog.default();
+    const session = new EditorSession();
+    this.#services = {
+      catalog: CommandCatalog.default(),
+      session,
+      store: new SvgDocumentStore(),
+    };
     for (const command of Application.#commands()) {
       this.#registry.register(command);
     }
@@ -33,8 +41,8 @@ export class Application {
     return this.#registry;
   }
 
-  get session(): EditorSession {
-    return this.#session;
+  get services(): Omit<CommandContext, 'out'> {
+    return this.#services;
   }
 
   buildRepl(source: LineSource, sink: OutputSink, showPrompt: boolean): Repl {
@@ -42,8 +50,7 @@ export class Application {
       source,
       sink,
       registry: this.#registry,
-      catalog: this.#catalog,
-      session: this.#session,
+      services: this.#services,
       banner: BANNER,
       prompt: 'svg> ',
       showPrompt,
@@ -52,6 +59,6 @@ export class Application {
 
   /** Every command of the editor; the list grows stage by stage (see docs/plan.md). */
   static #commands(): Command[] {
-    return [new HelpCommand(), new InitCommand(), new CanvasCommand()];
+    return [new HelpCommand(), new InitCommand(), new CanvasCommand(), new ReadCommand(), new SaveCommand()];
   }
 }

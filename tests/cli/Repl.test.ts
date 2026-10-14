@@ -10,6 +10,7 @@ import { HelpCommand } from '../../src/commands/HelpCommand.ts';
 import type { Command } from '../../src/commands/Command.ts';
 import { CommandRegistry } from '../../src/registry/CommandRegistry.ts';
 import { BufferSink } from '../support/BufferSink.ts';
+import { StubDocumentStore } from '../support/StubDocumentStore.ts';
 
 const catalog = CommandCatalog.default();
 
@@ -38,8 +39,7 @@ function buildSession(
     source: new ScriptLineSource(lines),
     sink,
     registry,
-    catalog,
-    session: new EditorSession(),
+    services: { catalog, session: new EditorSession(), store: new StubDocumentStore() },
     banner: BANNER,
     prompt: TEST_PROMPT,
     showPrompt: options.showPrompt ?? false,

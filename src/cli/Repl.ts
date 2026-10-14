@@ -3,8 +3,6 @@ import type { LineSource } from './LineSource.ts';
 import { Tokenizer } from './Tokenizer.ts';
 import type { OutputSink } from '../ports/OutputSink.ts';
 import type { CommandContext } from '../commands/CommandContext.ts';
-import type { CommandCatalog } from '../commands/CommandCatalog.ts';
-import type { EditorSession } from '../commands/EditorSession.ts';
 import type { CommandRegistry } from '../registry/CommandRegistry.ts';
 
 /** Everything the REPL needs; all of it is injected, nothing is global. */
@@ -12,8 +10,12 @@ export interface ReplOptions {
   readonly source: LineSource;
   readonly sink: OutputSink;
   readonly registry: CommandRegistry;
-  readonly catalog: CommandCatalog;
-  readonly session: EditorSession;
+  /**
+   * The services handed to every command (catalogue, session, store, later the
+   * history). The REPL adds the output sink itself, so a new service never
+   * changes this interface.
+   */
+  readonly services: Omit<CommandContext, 'out'>;
   readonly banner: string;
   /** Printed before each input line, e.g. `svg> ` (spec §2). */
   readonly prompt: string;
@@ -70,11 +72,7 @@ export class Repl {
       return;
     }
 
-    const context: CommandContext = {
-      out: this.#options.sink,
-      catalog: this.#options.catalog,
-      session: this.#options.session,
-    };
+    const context: CommandContext = { ...this.#options.services, out: this.#options.sink };
 
     try {
       command.execute(tokens.slice(1), context);

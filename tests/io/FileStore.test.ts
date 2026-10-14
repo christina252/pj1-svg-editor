@@ -8,7 +8,7 @@ const TEMP_DIR = join('.tmp', 'file-store-test');
 const store = new FileStore();
 
 after(() => {
-  rmSync('.tmp', { recursive: true, force: true });
+  rmSync(TEMP_DIR, { recursive: true, force: true });
 });
 
 describe('FileStore', () => {
