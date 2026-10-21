@@ -1,5 +1,6 @@
 import { EditorError } from '../errors/EditorError.ts';
 import type { Document } from '../model/Document.ts';
+import type { Element } from '../model/Element.ts';
 
 /**
  * The state a command works on: which document is currently open.
@@ -25,6 +26,15 @@ export class EditorSession {
       throw EditorError.noDocument();
     }
     return this.#document;
+  }
+
+  /** Looks an element up by id (R-ERR2), so every command reports it the same way. */
+  requireElement(id: string): Element {
+    const element = this.requireDocument().find(id);
+    if (element === undefined) {
+      throw EditorError.noSuchShape(id);
+    }
+    return element;
   }
 
   /** Makes `document` the current one (`init` and `read` do this). */

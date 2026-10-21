@@ -8,6 +8,8 @@ import { HelpCommand } from '../commands/HelpCommand.ts';
 import { InitCommand } from '../commands/InitCommand.ts';
 import { ReadCommand } from '../commands/ReadCommand.ts';
 import { SaveCommand } from '../commands/SaveCommand.ts';
+import { ShowCommand } from '../commands/ShowCommand.ts';
+import { TreeCommand } from '../commands/TreeCommand.ts';
 import { SvgDocumentStore } from '../io/SvgDocumentStore.ts';
 import { CommandRegistry } from '../registry/CommandRegistry.ts';
 import { BANNER } from './banner.ts';
@@ -67,6 +69,8 @@ export class Application {
       new ReadCommand(),
       new SaveCommand(),
       new CreateCommand(),
+      new TreeCommand(),
+      new ShowCommand(),
     ];
   }
 }
