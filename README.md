@@ -21,6 +21,9 @@ npm run check        # 类型检查 + 测试 + 架构检查
 npm run diagram      # 由 docs/architecture.puml 重新渲染架构图
 ```
 
+> **Windows 上 `npm run cli` 报"因为在此系统上禁止运行脚本"？** 那是 PowerShell 的执行策略拦下了 `npm.ps1`，
+> 与项目无关。三种绕法任选：`npm.cmd run cli`、`node src\cli\main.ts`，或直接**双击 `cli.cmd`**。
+
 命令序列可以存成脚本回放（`#` 开头为注释）：
 
 ```bash
