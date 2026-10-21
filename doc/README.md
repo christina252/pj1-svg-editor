@@ -1,7 +1,10 @@
 # PJ1 Phase 1 —— CLI 版 SVG 编辑器：项目文档
 
-> 需求编号（`R-*`）与决策编号（`D-*`）见 [`../docs/plan.md`](../docs/plan.md)（需求矩阵、决策记录、修订记录）。
-> 本文件按课程要求分四节；**架构方案**已完成，其余三节在实现收尾时填写。
+> 需求编号（`R-*`）与决策编号（`D-*`）见 [`../docs/plan.md`](../docs/plan.md)（需求矩阵 19 条命令 / 23 条错误契约、决策记录 D1–D22、修订记录）。
+> 本文件按课程要求分四节：**架构方案**、**过程记录**、**一致性自查**、**质量保证手段**——四节均已完成。
+>
+> 一句话：`npm run cli` 打开 REPL，19 条命令实现规格 §3 的全部能力；197 个测试（行覆盖 94.91%）+
+> 类型检查 + 依赖方向检查 + spec §6/§6.1 会话黄金回放，全部通过。
 
 ---
 
@@ -173,15 +176,149 @@ no dependency violations
 
 ## 过程记录
 
-> 原始素材见 [`ai-log.md`](ai-log.md)（随开发实时记录的协作日志，含每次真实报错与修正）。
-> 本节在实现收尾时从中提炼代表性条目（预计 5–6 条：设计取舍、被测试/工具抓到的真实缺陷、以及"AI 给的方案被否决"的案例）。
+> 原始素材见 [`ai-log.md`](ai-log.md)（随开发**实时**记录的日志，每条都对应一次真实的报错或失败）。
+> 下面是从中提炼的 7 条，按发生顺序排列。**协作方式如实说明**：代码由 AI 结对生成，
+> 本人负责需求确认、执行验收、判定问题并决定取舍；每条"发现的问题"都有真实命令输出作证据。
 
-（待补）
+### 1. 工具链整体改向：`tsx` 与 `vitest` 在这台机器上都跑不起来（S0）
+
+`npm install` 报 `EPERM syscall:'spawn'`（npm 的 postinstall 用管道启动子进程）；
+改用 `--ignore-scripts` 后，`npm run cli` 又报 `spawn EPERM`——因为 `tsx` 的原理就是再 spawn 一个 node。
+`vitest` 则死在 `vite` 的 `optimizeSafeRealPathSync()`：它执行 `exec("net use")`（管道）来建立网络驱动器表。
+
+**处理**：放弃 `tsx` 与 `vitest`，改用 **Node 24 原生类型剥离**运行 `.ts` + **内置 `node:test`**。
+**代价**：`engines` 提升到 node ≥ 24。**收益**：运行时依赖从 5 个降到 3 个。
+**教训**：报错堆栈里出现 `spawn`/管道时，先怀疑"这个工具是不是靠子进程工作"，而不是怀疑代码。
+
+### 2. 主动发现的反向依赖：命令层差点 import CLI（S1）
+
+命令要打印结果。`OutputSink` 最初放在 `src/cli/`，若命令直接引用它，依赖方向就成了 `commands → cli`，
+而 `cli/main` 又必须 import commands —— 双向依赖。
+**处理**：新增 `src/ports/` 只放接口，实现留在 `cli/`/`io/`，方向固定为 `cli → commands → ports`。
+**教训**：这条边不是编译器发现的，是"画依赖图时发现箭头指回去了"。后来它被写成规则表，交给脚本守。
+
+### 3. 一个永远说"没问题"的检查脚本等于没有（S2）
+
+架构守护脚本第一版跑出 `no dependency violations`——但无法证明它**会**报错。
+**处理**：加一份**故意违规**的 fixture（`model` 里 import `cli`），断言脚本确实抓到它；
+再把"本项目自身 0 违规"也做成一条测试。
+**教训**：任何"检查型"工具都必须先被证伪一次，否则它的绿灯没有意义。
+
+### 4. 测试红了不等于代码错：两次都是我的期望写错了（S3、S5）
+
+- 空 `<g>` 我期望 `<g></g>`，测试失败；回查 spec §4.1，`create g` 给的片段是 **`<g id="scene"/>`（自闭合）**——代码是对的。
+- `init` 之后 `undo`，我期望 `nothing to undo`，实测报 `undo not allowed after io command`；
+  回查 spec §4.3，**规格明确要求后者**——又是代码对、期望错。
+
+**处理**：两次都改测试，并把"先回规格确认再改代码"写进流程；第二次还补了用例固定 R-U3 优先于 D16。
+**教训**：红了的测试先问"凭什么我认为该是这样"，别急着改实现。
+
+### 5. 只有把 CLI 当程序跑才会暴露的问题：UTF-8 BOM（S3）
+
+进程内测试全绿，但用 PowerShell 存出的脚本回放时，首行命令被读成 `\uFEFFinit` → `unknown command`。
+**处理**：`Tokenizer` 忽略行首 BOM 并把 BOM 视为空白；用真实 CLI 复跑 `EF BB BF` 开头的脚本确认修复。
+
+### 6. 架构判断在编码中途被推翻：图形工厂搬家（S4）
+
+`create` 命令要用"类型名 → 类"，而读取器已有"标签名 → 类"。若命令直接 import `registry/ShapeFactory`，
+就会与 `registry → commands` 形成**环**。
+**处理**：把工厂拆成只依赖 `model`/`errors` 的独立模块 `src/factory/`，`io` 与 `commands` 都依赖它。
+同步改了依赖规则表、文档模块表与组件图（重新渲染）。
+**教训**：模块归属不是一次性决定；"谁依赖谁"要在每次新增依赖时重算一次。
+
+### 7. 交付说明与实际使用方式脱节（收尾阶段）
+
+`README` 里写的是 `npm run cli`（照抄 spec 的写法），但本机 PowerShell 的执行策略禁止运行 `npm.ps1`，
+用户敲下去直接是 `因为在此系统上禁止运行脚本`。而我的所有端到端验证都在 `cmd /c` 里跑——**那里 `npm run cli` 是好的**，
+所以测试全绿、用户却用不了。
+**处理**：README 补三种绕法，新增 `cli.cmd`（双击即用），`.gitattributes` 为 `*.cmd` 固定 CRLF
+（首版写成 LF，cmd.exe 直接把注释行当命令，实测才发现）。
+**教训**：验证必须在**用户会用的那个 shell** 里做；"我知道"和"我写进交付说明"是两件事。
 
 ## 一致性自查
 
-（实现收尾时填写：实际目录 vs 本文档的模块表；依赖方向规则的抽样检查结果——直接引用 `npm run arch:check` 的输出）
+### 1. 模块划分：方案 vs 实际目录
+
+`src/` 下的 9 个模块与本文 §1.2 的表**逐条对应**（`errors`、`ports`、`model`、`factory`、`io`、`commands`、`history`、`registry`、`cli`）。
+
+与初版方案的差异，全部已记入 [`../docs/plan.md`](../docs/plan.md) 第 8 节修订记录：
+
+| 差异 | 记录 | 说明 |
+|---|---|---|
+| 新增 `src/errors/` | S2 | 错误类原在 `cli/`，模型层要用就会反向依赖 |
+| 新增 `src/ports/` | S1 | 同上，输出与存取文档的接口必须先于实现存在 |
+| 新增 `src/factory/` | S4 | 工厂从 `registry/` 拆出，否则 `commands ↔ registry` 成环 |
+| **取消** `src/geometry/` | S3 | 坐标运算是各图形的多态职责，独立模块只会退化成 `switch` 或纯转发（§1.3） |
+| `CommandCatalog` 落在 `commands/` 而非 `registry/` | S1 | 目录描述命令本身；注册表只管分派 |
+
+### 2. 依赖方向：规则 vs 代码
+
+自动化检查的当前输出（`npm run arch:check`）：
+
+```
+dependency rules (module -> may import)
+  errors    -> (nothing)
+  ports     -> model
+  model     -> model, errors
+  factory   -> factory, model, errors
+  io        -> io, model, errors, ports, factory
+  commands  -> commands, model, errors, ports, factory, history
+  history   -> history, model, errors
+  registry  -> registry, commands, model, errors
+  cli       -> cli, commands, registry, history, io, model, errors, ports, factory
+
+scanned 64 files under src/
+no dependency violations
+```
+
+抽样核对（规则里最关键的两条）：
+
+| 抽查项 | 结果 | 证据 |
+|---|---|---|
+| `commands` 是否 import 了 `cli` 或 `io`？ | **否**。命令只用 `ports`（`OutputSink`/`DocumentStore`）、`model`、`factory`、`history` | `grep -r "from '../cli/" src/commands` 为空；`grep -r "from '../io/" src/commands` 为空 |
+| `model` 是否 import 了外层？ | **否**。只 import `./…`（同模块）与 `../errors/` | 同上，`src/model` 下的 import 全部是相对同层或 errors |
+
+历史上确实**两次**出现过这类偏差，都在提交前被拦下：
+S1 的 `OutputSink`（用 `ports/` 消除）、S4 的 `TreeFormatter`/`ShowFormatter`
+（最初写在 `cli/`，被规则判断为 `commands → cli` 后移入 `commands/`）。
+这两次也说明：**规则不是装饰，它真的改变过代码结构**。
+
+### 3. 其它"方案 vs 实现"的偏差
+
+| 项 | 方案 | 实现 | 记录 |
+|---|---|---|---|
+| `tree` 的列对齐 | 照 spec 样例 | spec 样例本身不自洽（实测同一父节点下补 5 与 1 个空格），改为"同级最长标签 + 2" | D4 |
+| 画布 `width`/`height` | 数值化 | `100%` 这类保留原字符串回写，只在 `canvas` 改尺寸后数字化 | D22 |
+| undo 空栈 | 未定义 | `nothing to undo` / `nothing to redo`，且 io 锁优先 | D16 / R-U3 |
 
 ## 质量保证手段
 
-（实现收尾时填写：功能完整性如何确认（需求矩阵逐条对照 + spec 会话回放）、对代码质量有信心的依据（110+ 用例、类型检查、架构检查、渲染核对））
+### 1. 功能完整性怎么确认
+
+**需求矩阵逐条对照**：[`../docs/plan.md`](../docs/plan.md) §2 列出的 19 条命令（R-D1…R-U2）与 23 条错误契约
+（R-ERR1…R-ERR23）逐条都有对应实现与用例；`tests/commands/CommandSurface.test.ts` 还断言
+"命令注册表 ⊆ 命令目录"且每条命令的 `usage` 与 `help` 中显示的语法**逐字符相等**——help 与行为不会漂移。
+
+**Spec 会话黄金回放**：`examples/spec6.script` 与 `examples/spec61.script` 是规格 §6 / §6.1 的完整会话，
+期望输出以 `.expected` 文件入库，测试**整块比对**（不是逐行取下标）。任何排版、文案、数值的漂移都会立刻失败。
+
+### 2. 对质量有信心的依据
+
+| 手段 | 现状 |
+|---|---|
+| 单元 + 集成测试 | **197 个用例**，全部通过（`npm test`） |
+| 覆盖率 | 行 **94.91%** / 分支 **89.17%** / 函数 **89.30%**（`npm run coverage`） |
+| 类型检查 | `tsc --noEmit`，`strict` + `noUncheckedIndexedAccess` + `erasableSyntaxOnly`，0 错误 |
+| 架构检查 | `npm run arch:check`，64 个源文件、0 违规；脚本自身有"故意违规"的回归测试 |
+| 输出合法性 | 写出的 SVG 用 `XMLValidator` 校验为**合法 XML**（浏览器渲染的前提） |
+| 读写往返 | 读入→写出→再读入，结构与文本逐字符一致（含中文、`&`/`<`/`>`、未知元素、未知属性） |
+| 边界矩阵 | 20 层嵌套、跨层递归缩放、空画布往返、非 SVG 文件、未知命令后继续、整棵子树删除后恢复、容器塞进自己后代、负缩放 |
+
+### 3. 已知限制（如实说明）
+
+1. **浏览器渲染没有自动核对**：开发沙箱禁止浏览器启动（Edge 需要 IPC 命名管道，报 `platform_check failed 拒绝访问`），
+   因此用"XML 合法性 + 读写往返"替代。人工验证方式：双击 `doc/architecture.svg` 或任意 `save` 出的 SVG 用浏览器打开。
+2. **`transform` 属性只保留不解释**（D3）：带 `transform` 的外部文件能无损读写，但 `move`/`scale` 不会考虑它。
+3. **`box` 复合图形未实现**（R-SCOPE1）：`create box` 报 `unknown shape type`，按规格属下一阶段。
+4. **`tree` 的列宽**与 spec 样例不是逐字节一致（D4，样例本身不自洽）。
+5. **未做撤销栈深度上限**：规格未要求，文档规模小，未加限制。
