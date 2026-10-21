@@ -163,3 +163,6 @@
 | 2026-10-14 | S3 | `Repl` 改为注入 `services` 集合（`Omit<CommandContext,'out'>`） | 避免每加一个服务就改一次 Repl 的构造参数 |
 | 2026-10-14 | S3 | 新增决策 D18–D22 与错误契约 R-ERR22/23 | 规格未定义但实现中一定会碰到的情形（画布尺寸、非 SVG 文件、text 带子元素、重复 id、百分比尺寸） |
 | 2026-10-14 | S3 | `Tokenizer` 忽略行首 UTF-8 BOM | 真实 CLI 端到端回放时发现：Windows 编辑器存出的脚本首行命令会被读成 `\uFEFFinit` |
+| 2026-10-14 | S3 | **取消 `src/geometry/` 模块**；依赖规则表与根 README 的目录清单同步移除 | 坐标运算是每个图形自己的多态职责（`Shape.shift/multiply`），独立模块只会变成 `switch(类型)`（spec §2.1 明令禁止）或纯转发。详见 `doc/README.md` §1.3 |
+| 2026-10-14 | S3 | 新增 `tools/PlantumlEncoder.ts` + `tools/render-diagram.ts`（`npm run diagram`）；架构图源文件为 `docs/architecture.puml`，渲染产物 `doc/architecture.svg` | 本机无 Java，无法本地跑 plantuml.jar；用官方服务渲染并把 SVG 入库，源文件仍可被本地工具复现 |
+| 2026-10-14 | S3 | `doc/README.md` 的**架构方案**一节完成（模块职责表、组件图、设计模式、依赖规则、8 条变化点） | 规格要求该节在交付物中；架构已稳定（S4/S5 只增加命令与撤销栈，不改分层），提前写完可以减少收尾压力 |

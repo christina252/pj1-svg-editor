@@ -17,13 +17,14 @@ npm run build        # 编译到 dist/
 npm run cli:dist     # 运行编译产物
 npm test             # 运行测试（Node 内置 test runner）
 npm run coverage     # 覆盖率报告
-npm run check        # 类型检查 + 测试
+npm run check        # 类型检查 + 测试 + 架构检查
+npm run diagram      # 由 docs/architecture.puml 重新渲染架构图
 ```
 
 命令序列可以存成脚本回放（`#` 开头为注释）：
 
 ```bash
-npm run cli --silent < examples/flowchart.script
+npm run cli --silent < examples/document.script
 ```
 
 ## 目录结构
@@ -33,7 +34,6 @@ src/
   cli/        命令行外壳（REPL、解析、终端适配器）
   commands/   命令层（Command 模式，一条命令一个类 + 命令目录）
   model/      领域模型（元素树、图形类、文档、id 查询）
-  geometry/   几何与坐标运算
   io/         SVG 读写（序列化 / 解析）
   history/    撤销重做栈
   registry/   按名字分派的两处（命令注册表、图形工厂）+ 图形类型注册

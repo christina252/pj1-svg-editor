@@ -1,0 +1,58 @@
+@startuml PJ1 CLI SVG Editor — 组件图
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam ArrowColor #4A5568
+skinparam ComponentBorderColor #2D3748
+skinparam PackageBorderColor #A0AEC0
+
+title PJ1 Phase 1 — CLI 版 SVG 编辑器 模块与依赖方向
+
+package "接口层 interface" as iface {
+  [cli\nRepl · Tokenizer · Application（组合根）] as cli
+}
+
+package "应用层 application" as app {
+  [commands\n一条命令一个类 · 命令目录 · 会话] as commands
+  [history\n撤销/重做栈（S5 实现）] as history
+  [registry\n命令注册表 · 图形工厂] as registry
+}
+
+package "领域层 domain" as domain {
+  [model\n元素树 · 图形类 · 容器 · Document] as model
+}
+
+package "基础设施 infrastructure" as infra {
+  [io\nSVG 序列化/解析 · 文件读写] as io
+}
+
+package "跨层 shared" as shared {
+  [ports\nOutputSink · DocumentStore] as ports
+  [errors\nEditorError（规格全部错误文案）] as errors
+}
+
+cli --> commands
+cli --> registry
+cli --> io
+cli --> ports
+commands --> model : Composite 操作
+commands --> ports
+commands --> errors
+registry --> commands
+registry --> model : 类型名 → 类
+history --> commands
+history --> model
+io --> model
+io --> ports
+io --> registry
+model --> errors
+
+note bottom of domain
+  依赖方向规则：内层不认识外层。
+  model 不依赖 commands/cli/io；
+  commands 不依赖 cli/io（通过 ports 反转）。
+  由 tools/ArchitectureChecker.ts 自动校验。
+end note
+@enduml
