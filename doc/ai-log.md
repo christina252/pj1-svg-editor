@@ -82,6 +82,35 @@
 - **可复核性**：这条决策的每一步都有本机真实命令输出作证据；如果换到没有沙箱限制的机器上，
   vitest 本可用，但 `node:test` 同样可用且更少依赖，故不回退。
 
+## 2026-10-14 · S4 · 实现 14 条编辑/显示命令（4 个小提交）
+
+- **做了什么**：`create`（6 类型 + `in` 子句）、`tree`/`show`、`move`/`scale`/`set`/`delete`、
+  `group`/`ungroup`/`addto`/`front`/`back`。加上 S3 的 4 条文档类命令与 `help`，
+  **19 条命令中已实现 17 条**（剩下 `undo`/`redo` 属 S5）。
+- **验证**：`npm run check` 全绿（163 个测试）；真实 CLI 回放 spec §6 的会话，输出与文档逐行一致
+  （列对齐按 D4 的规则），存出的 `demo.svg` 结构正确。
+
+### 本步的三个真实设计冲突（都在写代码时撞上，不是事后编的）
+
+1. **工厂放哪儿**：`create` 命令需要"类型名 → 类"，而读取器已有一份"标签名 → 类"。
+   若命令直接 import `registry/ShapeFactory`，就会与 `registry → commands` 形成**环**。
+   → 把工厂拆成只依赖 `model`/`errors` 的独立模块 `src/factory/`，`io` 与 `commands` 都依赖它，环消失。
+   同步改了依赖规则表、文档 §1.2/§2.3/§3.1 和组件图（重新渲染）。
+2. **格式化类放哪儿（差点违反自己定的规则）**：`TreeFormatter`/`ShowFormatter` 最初写在 `src/cli/`，
+   `TreeCommand` 一 import 就成了 `commands → cli` —— 正是 S1 时费力消灭的那条边。
+   `tsc` 不报错，是**架构守护脚本**会报。发现后立即把两个类移进 `src/commands/`：
+   输出格式属于命令，`cli/` 只负责把字符串写出去。
+3. **`removeChild` 不在 `Element` 上**：`ungroup` 里对 `Element` 调 `removeChild` 编译失败（TS2339）。
+   反射式地加 `as Container` 很丑，且会散落到多个命令里 →
+   在 `EditorSession` 加 `requireContainer()`，把"查找 + 判断 + 一次转型"收进一处，命令只拿到 `Container`。
+
+### 另外两个小教训
+
+- `tsc` 又抓到一个**未使用的 import**（`GroupCommand` 里的 `Container`）——严格配置在持续生效。
+- 测试里**又一次**因为"输出行数算错"失败（`read` 只占一行，我按两行算，断言取到了 `undefined`）。
+  这已经是同类问题第三次出现 → 结论写进 S3 的日志：**黄金断言一律整块比较（`slice` + `deepEqual`），
+  不要逐个下标**。S4 的显示类测试已按此写法。
+
 ## 2026-10-14 · S3 · 实现 SVG 读写与文档类命令（拆成 5 个小提交）
 
 - **做了什么**：`SvgWriter`（模型→SVG 文本）、`XmlParser`（唯一接触 fast-xml-parser 的地方）、

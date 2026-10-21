@@ -1,3 +1,5 @@
+import { AddToCommand } from '../commands/AddToCommand.ts';
+import { BackCommand } from '../commands/BackCommand.ts';
 import { CanvasCommand } from '../commands/CanvasCommand.ts';
 import type { Command } from '../commands/Command.ts';
 import { CommandCatalog } from '../commands/CommandCatalog.ts';
@@ -5,6 +7,8 @@ import type { CommandContext } from '../commands/CommandContext.ts';
 import { CreateCommand } from '../commands/CreateCommand.ts';
 import { DeleteCommand } from '../commands/DeleteCommand.ts';
 import { EditorSession } from '../commands/EditorSession.ts';
+import { FrontCommand } from '../commands/FrontCommand.ts';
+import { GroupCommand } from '../commands/GroupCommand.ts';
 import { HelpCommand } from '../commands/HelpCommand.ts';
 import { InitCommand } from '../commands/InitCommand.ts';
 import { MoveCommand } from '../commands/MoveCommand.ts';
@@ -14,6 +18,7 @@ import { ScaleCommand } from '../commands/ScaleCommand.ts';
 import { SetCommand } from '../commands/SetCommand.ts';
 import { ShowCommand } from '../commands/ShowCommand.ts';
 import { TreeCommand } from '../commands/TreeCommand.ts';
+import { UngroupCommand } from '../commands/UngroupCommand.ts';
 import { SvgDocumentStore } from '../io/SvgDocumentStore.ts';
 import { CommandRegistry } from '../registry/CommandRegistry.ts';
 import { BANNER } from './banner.ts';
@@ -77,6 +82,11 @@ export class Application {
       new ScaleCommand(),
       new SetCommand(),
       new DeleteCommand(),
+      new GroupCommand(),
+      new UngroupCommand(),
+      new AddToCommand(),
+      new FrontCommand(),
+      new BackCommand(),
       new TreeCommand(),
       new ShowCommand(),
     ];

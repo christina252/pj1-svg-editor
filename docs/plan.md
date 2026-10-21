@@ -168,3 +168,39 @@
 | 2026-10-14 | S3 | `doc/README.md` 的**架构方案**一节完成（模块职责表、组件图、设计模式、依赖规则、8 条变化点） | 规格要求该节在交付物中；架构已稳定（S4/S5 只增加命令与撤销栈，不改分层），提前写完可以减少收尾压力 |
 | 2026-10-14 | S4 | **`ShapeFactory` 从 `src/registry/` 移到新模块 `src/factory/`**；依赖规则表、组件图与文档 §1.2/§2.3/§3.1 同步更新 | `create` 命令也要用工厂，而 `registry` 依赖 `commands`（存放命令实例），若工厂留在 `registry` 会形成 `commands ↔ registry` 的环；独立成只依赖 `model`/`errors` 的模块后依赖图仍无环 |
 | 2026-10-14 | S4 | `Element` 增加 `isContainer` 多态谓词 | 命令需要判断"目标能不能装子元素"（R-ERR4 `not a container`），用 `instanceof` 会在命令层引入类型判断 |
+| 2026-10-14 | S4 | `Element` 增加 `anchor()`（默认 null，`Shape` 返回 `x/y`，`circle`/`ellipse` 返回 `cx/cy`，`line` 返回 `x1/y1`） | `move` 的回显要分两种：叶子报新锚点、容器报位移（spec §6 vs §6.1）；用多态取值避免命令里判断类型 |
+| 2026-10-14 | S4 | `tree`/`show` 的格式化类放在 `src/commands/`（而非 `cli/`） | 输出格式属于命令，`cli/` 只负责"写出去"；放到 `cli/` 会让 `commands → cli` 反向依赖 |
+| 2026-10-14 | S4 | `EditorSession` 增加 `requireElement` / `requireContainer` | R-ERR2/R-ERR4 的查找与判定收敛到一处，19 条命令不再各写一遍 |
+
+---
+
+## 9. 命令回显文案表
+
+> spec 只对部分命令给了回显样例（§6 会话），其余必须由实现定义。
+> 本表是**唯一**依据：S6 的黄金回放测试与 S7 的一致性自查都对照它。
+
+| 命令 | 成功回显 | 出处 |
+|---|---|---|
+| `init` | `canvas 800x600 created` | spec §6 |
+| `read` | `read other.svg (7 elements)`（告警行在前） | spec §6 |
+| `save` | `saved to demo.svg (5 elements)` | spec §6 |
+| `canvas`（查询） | `canvas 800x600` | 本实现（spec 未给样例） |
+| `canvas`（改尺寸） | `canvas resized to 800x600` | 本实现 |
+| `create`（无 `in`） | `rect#bg created` | spec §6 |
+| `create`（有 `in`） | `rect#start created in g#node1` | spec §4.1 |
+| `delete` | `rect#box deleted` | spec §6 |
+| `move`（叶子） | `circle#c1 moved to (130,100)` | spec §6 |
+| `move`（容器） | `g#node2 moved by (0,100)` | spec §6.1 |
+| `scale` | `circle#c1 scaled by 2` | 本实现 |
+| `set`（普通属性） | `rect#bg updated: fill=red` | 本实现（按 §6 的 text 形式类推） |
+| `set`（text 内容） | `text#title updated: text="My Diagram v2"` | spec §6 |
+| `group` | `g#markers created with 2 children` | spec §6 |
+| `ungroup` | `g#inner ungrouped (2 children promoted)` | 本实现 |
+| `addto` | `rect#b added to g#g1` | 本实现 |
+| `front` / `back` | `rect#a moved to front` / `rect#a moved to back` | 本实现 |
+| `tree` / `show` / `help` | 直接输出内容（格式见 spec §5） | spec §5 |
+| `undo` / `redo` | 见 S5 | — |
+
+> 单复数：成员数为 1 时输出 `1 child`（`child/children`），不写 `1 children`。
+> 一致性保障：`tests/commands/CommandSurface.test.ts` 断言"命令注册表 ⊆ 命令目录"且
+> 每条命令的 `usage` 常量与 `help` 里显示的语法**逐字符相等**——help 与行为不会漂移。

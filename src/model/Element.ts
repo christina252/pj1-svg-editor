@@ -96,11 +96,11 @@ export abstract class Element {
   abstract walk(visit: (element: Element) => void): void;
 
   /**
-   * Takes one child while a document is being loaded.
+   * Makes `child` a child of this element (append semantics).
    *
-   * Containers accept it; a leaf refuses, because an element that cannot hold
-   * children must never silently lose them (the loader downgrades such an
-   * element to a ForeignElement instead, D20).
+   * Containers accept it — the loader and `addto` both use it; a leaf refuses,
+   * because an element that cannot hold children must never silently lose them
+   * (the loader downgrades such an element to a ForeignElement instead, D20).
    */
   adopt(_child: Element): void {
     throw new Error(`internal error: ${this.label()} cannot hold children`);

@@ -1,4 +1,5 @@
 import { EditorError } from '../errors/EditorError.ts';
+import type { Container } from '../model/Container.ts';
 import type { Document } from '../model/Document.ts';
 import type { Element } from '../model/Element.ts';
 
@@ -35,6 +36,21 @@ export class EditorSession {
       throw EditorError.noSuchShape(id);
     }
     return element;
+  }
+
+  /**
+   * Looks a container up by id (R-ERR2 / R-ERR4).
+   *
+   * The cast below is the one place where "checked at runtime, typed statically"
+   * meets: `isContainer` is the model's own answer, so it cannot disagree with
+   * the class of the object.
+   */
+  requireContainer(id: string): Container {
+    const element = this.requireElement(id);
+    if (!element.isContainer) {
+      throw EditorError.notAContainer(id);
+    }
+    return element as Container;
   }
 
   /** Makes `document` the current one (`init` and `read` do this). */
