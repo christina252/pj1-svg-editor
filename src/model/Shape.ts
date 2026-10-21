@@ -28,6 +28,15 @@ export abstract class Shape extends Element {
     return NumberFormat.format(this.numberOf(name));
   }
 
+  /**
+   * The point a `move` reports back ("moved to (130,100)").
+   *
+   * Default is the `x`/`y` anchor; shapes based on `cx/cy` or `x1/y1` override it.
+   */
+  override anchor(): Readonly<{ x: number; y: number }> {
+    return { x: this.numberOf('x'), y: this.numberOf('y') };
+  }
+
   protected putNumber(name: string, value: number): void {
     this.put(name, NumberFormat.format(value));
   }

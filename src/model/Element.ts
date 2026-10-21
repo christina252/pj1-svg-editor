@@ -30,6 +30,14 @@ export abstract class Element {
     return false;
   }
 
+  /**
+   * The point `move` reports, or null when the element has no single anchor
+   * (containers move an offset; an opaque element has no geometry at all).
+   */
+  anchor(): Readonly<{ x: number; y: number }> | null {
+    return null;
+  }
+
   get parent(): Container | null {
     return this.#parent;
   }

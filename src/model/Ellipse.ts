@@ -49,4 +49,8 @@ export class Ellipse extends Shape {
     this.multiply('rx', factor);
     this.multiply('ry', factor);
   }
+
+  override anchor(): Readonly<{ x: number; y: number }> {
+    return { x: this.numberOf('cx'), y: this.numberOf('cy') };
+  }
 }

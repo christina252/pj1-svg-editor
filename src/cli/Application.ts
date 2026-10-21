@@ -3,11 +3,15 @@ import type { Command } from '../commands/Command.ts';
 import { CommandCatalog } from '../commands/CommandCatalog.ts';
 import type { CommandContext } from '../commands/CommandContext.ts';
 import { CreateCommand } from '../commands/CreateCommand.ts';
+import { DeleteCommand } from '../commands/DeleteCommand.ts';
 import { EditorSession } from '../commands/EditorSession.ts';
 import { HelpCommand } from '../commands/HelpCommand.ts';
 import { InitCommand } from '../commands/InitCommand.ts';
+import { MoveCommand } from '../commands/MoveCommand.ts';
 import { ReadCommand } from '../commands/ReadCommand.ts';
 import { SaveCommand } from '../commands/SaveCommand.ts';
+import { ScaleCommand } from '../commands/ScaleCommand.ts';
+import { SetCommand } from '../commands/SetCommand.ts';
 import { ShowCommand } from '../commands/ShowCommand.ts';
 import { TreeCommand } from '../commands/TreeCommand.ts';
 import { SvgDocumentStore } from '../io/SvgDocumentStore.ts';
@@ -69,6 +73,10 @@ export class Application {
       new ReadCommand(),
       new SaveCommand(),
       new CreateCommand(),
+      new MoveCommand(),
+      new ScaleCommand(),
+      new SetCommand(),
+      new DeleteCommand(),
       new TreeCommand(),
       new ShowCommand(),
     ];

@@ -41,6 +41,10 @@ export class Circle extends Shape {
     this.shift('cy', dy);
   }
 
+  override anchor(): Readonly<{ x: number; y: number }> {
+    return { x: this.numberOf('cx'), y: this.numberOf('cy') };
+  }
+
   override scaleBy(factor: number): void {
     this.multiply('cx', factor);
     this.multiply('cy', factor);

@@ -44,4 +44,8 @@ export class Line extends Shape {
     this.multiply('x2', factor);
     this.multiply('y2', factor);
   }
+
+  override anchor(): Readonly<{ x: number; y: number }> {
+    return { x: this.numberOf('x1'), y: this.numberOf('y1') };
+  }
 }
