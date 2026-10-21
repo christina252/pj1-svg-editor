@@ -171,6 +171,9 @@
 | 2026-10-14 | S4 | `Element` 增加 `anchor()`（默认 null，`Shape` 返回 `x/y`，`circle`/`ellipse` 返回 `cx/cy`，`line` 返回 `x1/y1`） | `move` 的回显要分两种：叶子报新锚点、容器报位移（spec §6 vs §6.1）；用多态取值避免命令里判断类型 |
 | 2026-10-14 | S4 | `tree`/`show` 的格式化类放在 `src/commands/`（而非 `cli/`） | 输出格式属于命令，`cli/` 只负责"写出去"；放到 `cli/` 会让 `commands → cli` 反向依赖 |
 | 2026-10-14 | S4 | `EditorSession` 增加 `requireElement` / `requireContainer` | R-ERR2/R-ERR4 的查找与判定收敛到一处，19 条命令不再各写一遍 |
+| 2026-10-14 | S5 | 新增模块 `src/history/`（`Edit`/`CommandEdit`/`History`）；`commands → history` 依赖成立，`history` 只依赖 `errors` | 撤销单元必须由命令自己构造（只有它知道"撤销"是什么），但 `History` 不需要认识任何图形或命令，所以依赖不成环 |
+| 2026-10-14 | S5 | 几何类编辑的撤销改为**属性快照回填**，而不是"反向运算" | `scale` 按 `1/f` 反算会因 6 位小数归一产生漂移；`restoreAttributes` 回填原始字符串才能保证 `undo` 后与原来逐字符一致 |
+| 2026-10-14 | S5 | `init`/`read` 清空历史，`save`/`canvas` 只加锁不清空 | `init`/`read` 换掉了文档对象，旧撤销单元会指向已消失的元素；`save`/`canvas` 改的仍是同一份文档，规格也只要求"禁止撤销直到下一次编辑" |
 
 ---
 
@@ -199,7 +202,17 @@
 | `addto` | `rect#b added to g#g1` | 本实现 |
 | `front` / `back` | `rect#a moved to front` / `rect#a moved to back` | 本实现 |
 | `tree` / `show` / `help` | 直接输出内容（格式见 spec §5） | spec §5 |
-| `undo` / `redo` | 见 S5 | — |
+| `undo`（move 叶子） | `circle#c1 moved back to (100,100)` | spec §6 |
+| `undo`（move 容器） | `g#node2 moved back by (0,-100)` | spec §6.1 类推 |
+| `undo`（set） | `text#title updated: text="My Diagram"` | spec §6 |
+| `undo`（delete） | `rect#box restored into g#markers` | spec §6 |
+| `undo`（create） | `rect#bg removed` | 本实现 |
+| `undo`（scale） | `circle#c1 scaled back by 2` | 本实现 |
+| `undo`（group） | `g#markers dissolved (2 children restored)` | 本实现 |
+| `undo`（ungroup） | `g#inner regrouped (2 children)` | 本实现 |
+| `undo`（addto） | `rect#b moved back to svg` | 本实现 |
+| `undo`（front / back） | `rect#a moved back` | 本实现 |
+| `redo` | 与该命令第一次执行时的回显完全相同 | spec §6（`redo` 复现 `moved to`） |
 
 > 单复数：成员数为 1 时输出 `1 child`（`child/children`），不写 `1 children`。
 > 一致性保障：`tests/commands/CommandSurface.test.ts` 断言"命令注册表 ⊆ 命令目录"且

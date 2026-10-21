@@ -22,6 +22,8 @@ export class ReadCommand implements Command {
     const loaded = context.store.load(path);
     loaded.document.setSourcePath(path);
     context.session.setDocument(loaded.document);
+    // a loaded document starts with an empty, locked history (R-U3)
+    context.session.history.lockAfterIo(true);
 
     for (const warning of loaded.warnings) {
       context.out.line(warning);

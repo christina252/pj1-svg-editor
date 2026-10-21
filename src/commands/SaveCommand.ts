@@ -26,6 +26,9 @@ export class SaveCommand implements Command {
 
     context.store.save(document, path);
     document.setSourcePath(path);
+    // saving locks undo/redo until the next edit command (R-U3), but the
+    // history itself survives: the document is still the same one
+    context.session.history.lockAfterIo(false);
     context.out.line(`saved to ${path} (${document.elementCount()} elements)`);
   }
 }

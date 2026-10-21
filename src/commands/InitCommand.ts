@@ -27,6 +27,8 @@ export class InitCommand implements Command {
 
     const document = Document.blank(width, height);
     context.session.setDocument(document);
+    // a new document makes the old history meaningless (R-U3)
+    context.session.history.lockAfterIo(true);
     context.out.line(`canvas ${document.size} created`);
   }
 }

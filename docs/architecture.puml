@@ -16,7 +16,7 @@ package "接口层 interface" as iface {
 
 package "应用层 application" as app {
   [commands\n一条命令一个类 · 命令目录 · 会话] as commands
-  [history\n撤销/重做栈（S5 实现）] as history
+  [history\n撤销/重做栈 · 撤销单元] as history
   [registry\n命令注册表] as registry
   [factory\n图形工厂：类型名/标签名 → 类] as factory
 }
@@ -42,9 +42,8 @@ commands --> model : Composite 操作
 commands --> ports
 commands --> errors
 commands --> factory
+commands --> history
 registry --> commands
-history --> commands
-history --> model
 factory --> model : 类型名 → 类
 io --> model
 io --> ports

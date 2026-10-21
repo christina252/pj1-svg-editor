@@ -1,4 +1,5 @@
 import { EditorError } from '../errors/EditorError.ts';
+import { CommandEdit } from '../history/CommandEdit.ts';
 import type { Container } from '../model/Container.ts';
 import type { Document } from '../model/Document.ts';
 import type { Element } from '../model/Element.ts';
@@ -38,10 +39,22 @@ export class CreateCommand implements Command {
     const parent = containerId === null ? document : CreateCommand.#containerOf(document, containerId);
     parent.append(element);
 
-    context.out.line(
+    const forward =
       containerId === null
         ? `${element.label()} created`
-        : `${element.label()} created in ${parent.label()}`,
+        : `${element.label()} created in ${parent.label()}`;
+    context.out.line(forward);
+    context.session.history.push(
+      new CommandEdit(
+        () => {
+          parent.removeChild(element);
+          return `${element.label()} removed`;
+        },
+        () => {
+          parent.append(element);
+          return forward;
+        },
+      ),
     );
   }
 

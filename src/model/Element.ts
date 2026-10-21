@@ -77,6 +77,33 @@ export abstract class Element {
     return this.#attributes;
   }
 
+  /** Reads one attribute (the text content counts as the attribute `text`). */
+  getAttribute(name: string): string | undefined {
+    return this.#attributes.get(name);
+  }
+
+  /** Removes one attribute — used by undo to restore "it was not set before". */
+  removeAttribute(name: string): void {
+    this.#attributes.delete(name);
+  }
+
+  /**
+   * Snapshot of the raw attributes, used as the memento of geometry edits.
+   *
+   * Storing the old values is what makes `undo` exact: scaling back by `1/f`
+   * would drift on rounded numbers, restoring the saved strings cannot.
+   */
+  captureAttributes(): ReadonlyMap<string, string> {
+    return new Map(this.#attributes);
+  }
+
+  restoreAttributes(saved: ReadonlyMap<string, string>): void {
+    this.#attributes.clear();
+    for (const [name, value] of saved) {
+      this.#attributes.set(name, value);
+    }
+  }
+
   /** Inline attribute summary for `tree` (spec §5.1). */
   abstract summary(): string;
 

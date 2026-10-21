@@ -82,6 +82,24 @@
 - **可复核性**：这条决策的每一步都有本机真实命令输出作证据；如果换到没有沙箱限制的机器上，
   vitest 本可用，但 `node:test` 同样可用且更少依赖，故不回退。
 
+## 2026-10-14 · S5 · 撤销/重做（19/19 命令补齐）
+
+- **做了什么**：`src/history/`（`Edit` / `CommandEdit` / `History`）、`undo` / `redo` 两条命令，
+  并让 10 条编辑命令在改变状态后压入一个撤销单元；4 条文档类命令改为调用 `lockAfterIo`。
+- **验证**：181 个测试全绿；真实 CLI 回放 spec §6 的**完整**会话（含 undo/redo/save 后 undo），
+  输出与文档逐行一致：`circle#c1 moved back to (100,100)`、`text#title updated: text="My Diagram"`、
+  `rect#box restored into g#markers`、`error: undo not allowed after io command`。
+- **三个设计选择**：
+  1. **撤销单元由命令自己构造**（`CommandEdit` 收两个闭包），`History` 只压栈/弹栈，不认识图形与命令
+     → 依赖成环的风险从一开始就没有，`commands → history` 单向。
+  2. **几何编辑用属性快照回填，而不是反向运算**。`scale 1.1` 之后若按 `1/1.1` 反算，
+     6 位小数归一会产生漂移；保存原始属性字符串回填，才能保证 undo 后与原来**逐字符一致**。
+  3. **`init`/`read` 清空历史、`save`/`canvas` 只加锁**：前两者换掉了文档对象，旧单元会指向已消失的元素；
+     后两者改的仍是同一份文档，规格也只要求"禁止撤销直到下一次编辑"。
+- **一个真实的测试失败**：我最初断言"`init` 之后 `undo` 应报 `nothing to undo`"，
+  实测报的是 `undo not allowed after io command`。回查 spec §4.3 —— **规格明确要求后者**，
+  是实现对了、我的测试期望错了。改测试，并补了一条用例专门固定这个优先级（R-U3 先于 D16）。
+
 ## 2026-10-14 · S4 · 实现 14 条编辑/显示命令（4 个小提交）
 
 - **做了什么**：`create`（6 类型 + `in` 子句）、`tree`/`show`、`move`/`scale`/`set`/`delete`、

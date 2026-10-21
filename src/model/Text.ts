@@ -62,4 +62,16 @@ export class Text extends Shape {
     }
     super.setAttribute(name, value);
   }
+
+  override getAttribute(name: string): string | undefined {
+    return name === 'text' ? this.#content : super.getAttribute(name);
+  }
+
+  override removeAttribute(name: string): void {
+    if (name === 'text') {
+      this.#content = '';
+      return;
+    }
+    super.removeAttribute(name);
+  }
 }

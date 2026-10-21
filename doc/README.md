@@ -31,7 +31,7 @@
 | `src/model/` | 领域 | 元素树与图形：`Element`/`Shape`/5 个叶子/`Container`/`Group`/`ForeignElement`/`Document`，外加数值格式与样式属性表。**纯内存，无 IO、无 CLI** | `Element`、`Rect`…、`Document` | `model`、`errors` |
 | `src/io/` | 基础设施 | SVG 序列化与解析、文件读写。**唯一**接触 XML 库（`fast-xml-parser`）与 `node:fs` 的地方 | `SvgWriter`、`SvgReader`、`XmlParser`、`FileStore`、`SvgDocumentStore` | `io`、`model`、`errors`、`ports`、`factory` |
 | `src/commands/` | 应用 | 命令层：一条命令一个类（Command 模式）、命令目录（help 的数据源）、会话（当前文档 / 按 id 查找）、命令输出格式（`TreeFormatter`/`ShowFormatter`） | `Command`、`CommandCatalog`、`EditorSession`、`*Command` | `commands`、`model`、`errors`、`ports`、`factory` |
-| `src/history/` | 应用 | 撤销/重做栈与 io 锁（**S5 实现**） | `UndoStack` | `history`、`commands`、`model`、`errors` |
+| `src/history/` | 应用 | 撤销/重做栈、撤销单元（`Edit`）、io 锁与 redo 失效规则 | `History`、`Edit`、`CommandEdit` | `history`、`errors` |
 | `src/registry/` | 应用 | **第一处按名分派**：命令名 → 实现 | `CommandRegistry` | `registry`、`commands`、`model`、`errors` |
 | `src/factory/` | 应用 | **第二处按名分派**：类型名/标签名 → 类（`create` 与读文件共用） | `ShapeFactory` | `factory`、`model`、`errors` |
 | `src/cli/` | 接口 | 进程边界：REPL、分词、终端适配器、组合根 `Application`。不知道图形语义，只负责"读一行 → 执行 → 打印" | `Repl`、`Tokenizer`、`Application` | 全部 |
@@ -122,8 +122,8 @@
 | `model` | `model`、`errors` | 领域模型必须能被单独理解：不许 import 命令、CLI、XML、文件系统 |
 | `factory` | `factory`、`model`、`errors` | 只负责"名字 → 类"，不碰 IO 也不碰命令；正因为够窄，才能被两边共用 |
 | `io` | `io`、`model`、`errors`、`ports`、`factory` | 读写要把 XML 变成模型对象，所以要用图形工厂；但**反过来不允许**：`factory` 不依赖 `io` |
-| `commands` | `commands`、`model`、`errors`、`ports`、`factory` | 命令用模型做修改、用端口输出与存盘、用工厂造新元素；**不许** import `cli`（外层）、**不许** import `io`（细节被端口挡住） |
-| `history` | `history`、`commands`、`model`、`errors` | 撤销栈里存的是命令对象，所以要认识命令 |
+| `commands` | `commands`、`model`、`errors`、`ports`、`factory`、`history` | 命令用模型做修改、用端口输出与存盘、用工厂造新元素、把撤销单元交给撤销栈；**不许** import `cli`（外层）、**不许** import `io`（细节被端口挡住） |
+| `history` | `history`、`errors` | 撤销单元（`Edit`）只有两个返回字符串的动作，这一层不需要认识命令或图形，因此也没有环 |
 | `registry` | `registry`、`commands`、`model`、`errors` | 注册表要持有命令实例；它依赖命令，所以命令层不能反过来依赖它 |
 | `cli` | 全部 | 它是组合根，只在这里把实现装配起来 |
 

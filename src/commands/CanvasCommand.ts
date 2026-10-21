@@ -33,6 +33,8 @@ export class CanvasCommand implements Command {
     }
 
     document.resize(width, height);
+    // resizing is a document command: it locks undo until the next edit (R-U3)
+    context.session.history.lockAfterIo(false);
     context.out.line(`canvas resized to ${document.size}`);
   }
 }

@@ -1,4 +1,5 @@
 import { EditorError } from '../errors/EditorError.ts';
+import { CommandEdit } from '../history/CommandEdit.ts';
 import type { Command } from './Command.ts';
 import type { CommandContext } from './CommandContext.ts';
 
@@ -22,9 +23,31 @@ export class SetCommand implements Command {
     const attribute = args[1] ?? '';
     const value = args[2] ?? '';
 
+    const previous = element.getAttribute(attribute);
     element.setAttribute(attribute, value);
+    const forward = SetCommand.#message(element.label(), attribute, value);
 
+    context.out.line(forward);
+    context.session.history.push(
+      new CommandEdit(
+        () => {
+          if (previous === undefined) {
+            element.removeAttribute(attribute);
+          } else {
+            element.setAttribute(attribute, previous);
+          }
+          return SetCommand.#message(element.label(), attribute, previous ?? '');
+        },
+        () => {
+          element.setAttribute(attribute, value);
+          return forward;
+        },
+      ),
+    );
+  }
+
+  static #message(label: string, attribute: string, value: string): string {
     const shown = attribute === 'text' ? `text="${value}"` : `${attribute}=${value}`;
-    context.out.line(`${element.label()} updated: ${shown}`);
+    return `${label} updated: ${shown}`;
   }
 }

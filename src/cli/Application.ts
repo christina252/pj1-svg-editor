@@ -13,11 +13,13 @@ import { HelpCommand } from '../commands/HelpCommand.ts';
 import { InitCommand } from '../commands/InitCommand.ts';
 import { MoveCommand } from '../commands/MoveCommand.ts';
 import { ReadCommand } from '../commands/ReadCommand.ts';
+import { RedoCommand } from '../commands/RedoCommand.ts';
 import { SaveCommand } from '../commands/SaveCommand.ts';
 import { ScaleCommand } from '../commands/ScaleCommand.ts';
 import { SetCommand } from '../commands/SetCommand.ts';
 import { ShowCommand } from '../commands/ShowCommand.ts';
 import { TreeCommand } from '../commands/TreeCommand.ts';
+import { UndoCommand } from '../commands/UndoCommand.ts';
 import { UngroupCommand } from '../commands/UngroupCommand.ts';
 import { SvgDocumentStore } from '../io/SvgDocumentStore.ts';
 import { CommandRegistry } from '../registry/CommandRegistry.ts';
@@ -89,6 +91,8 @@ export class Application {
       new BackCommand(),
       new TreeCommand(),
       new ShowCommand(),
+      new UndoCommand(),
+      new RedoCommand(),
     ];
   }
 }

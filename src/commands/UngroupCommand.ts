@@ -1,4 +1,5 @@
 import { EditorError } from '../errors/EditorError.ts';
+import { CommandEdit } from '../history/CommandEdit.ts';
 import type { Command } from './Command.ts';
 import type { CommandContext } from './CommandContext.ts';
 
@@ -9,6 +10,9 @@ import type { CommandContext } from './CommandContext.ts';
  * refused: a container directly under the root (R-ERR8) and an opaque container
  * such as `<defs>`, whose internal structure does not belong to this editor
  * (R-ERR6).
+ *
+ * Undo rebuilds the container object (its members and their order are kept) and
+ * puts it back at its old index.
  */
 export class UngroupCommand implements Command {
   readonly name: string = 'ungroup';
@@ -30,15 +34,40 @@ export class UngroupCommand implements Command {
     }
 
     const children = [...group.children];
-    let index = parent.indexOf(group);
-    for (const child of children) {
-      group.removeChild(child);
-      parent.insertAt(index, child);
-      index += 1;
-    }
-    parent.removeChild(group);
-
+    const index = parent.indexOf(group);
     const count = children.length;
-    context.out.line(`${group.label()} ungrouped (${count} ${count === 1 ? 'child' : 'children'} promoted)`);
+    const noun = count === 1 ? 'child' : 'children';
+    const forward = `${group.label()} ungrouped (${count} ${noun} promoted)`;
+
+    const promote = (): void => {
+      let cursor = Math.min(index, parent.children.length);
+      for (const child of children) {
+        group.removeChild(child);
+        parent.insertAt(cursor, child);
+        cursor += 1;
+      }
+      parent.removeChild(group);
+    };
+
+    promote();
+    context.out.line(forward);
+    context.session.history.push(
+      new CommandEdit(
+        () => {
+          for (const child of children) {
+            child.parent?.removeChild(child);
+          }
+          for (const child of children) {
+            group.append(child);
+          }
+          parent.insertAt(Math.min(index, parent.children.length), group);
+          return `${group.label()} regrouped (${count} ${noun})`;
+        },
+        () => {
+          promote();
+          return forward;
+        },
+      ),
+    );
   }
 }

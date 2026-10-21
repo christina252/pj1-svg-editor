@@ -1,10 +1,12 @@
 import { EditorError } from '../errors/EditorError.ts';
+import { History } from '../history/History.ts';
 import type { Container } from '../model/Container.ts';
 import type { Document } from '../model/Document.ts';
 import type { Element } from '../model/Element.ts';
 
 /**
- * The state a command works on: which document is currently open.
+ * The state a command works on: which document is currently open, and its
+ * undo history.
  *
  * Commands never create documents themselves — they ask the session. That is
  * what makes `error: no document. use 'init' or 'read' first` (R-ERR11) a
@@ -12,6 +14,9 @@ import type { Element } from '../model/Element.ts';
  */
 export class EditorSession {
   #document: Document | null = null;
+
+  /** Undo / redo stacks of the current document (spec §4.3). */
+  readonly history: History = new History();
 
   get document(): Document | null {
     return this.#document;
