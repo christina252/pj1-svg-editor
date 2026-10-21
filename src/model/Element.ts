@@ -25,6 +25,11 @@ export abstract class Element {
   /** True for elements whose geometry this editor understands (D12). */
   abstract get isGeometric(): boolean;
 
+  /** True for elements that can hold children (Container overrides this). */
+  get isContainer(): boolean {
+    return false;
+  }
+
   get parent(): Container | null {
     return this.#parent;
   }

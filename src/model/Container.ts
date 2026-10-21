@@ -20,6 +20,10 @@ export abstract class Container extends Element {
     return this.#children;
   }
 
+  override get isContainer(): boolean {
+    return true;
+  }
+
   /** Adds a child at the end of the child list. */
   append(child: Element): void {
     this.insertAt(this.#children.length, child);

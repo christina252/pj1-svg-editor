@@ -29,14 +29,19 @@
 | `src/errors/` | 跨层 | 用户可见错误：规格 §4.2 的 11 条 + 补充的 12 条全部收敛为工厂方法，文案只有一处定义 | `EditorError` | 无 |
 | `src/ports/` | 跨层 | 应用层依赖的**接口**（端口）：往哪打印、怎么存取文档 | `OutputSink`、`DocumentStore`、`LoadedDocument` | `model`（仅类型引用） |
 | `src/model/` | 领域 | 元素树与图形：`Element`/`Shape`/5 个叶子/`Container`/`Group`/`ForeignElement`/`Document`，外加数值格式与样式属性表。**纯内存，无 IO、无 CLI** | `Element`、`Rect`…、`Document` | `model`、`errors` |
-| `src/io/` | 基础设施 | SVG 序列化与解析、文件读写。**唯一**接触 XML 库（`fast-xml-parser`）与 `node:fs` 的地方 | `SvgWriter`、`SvgReader`、`XmlParser`、`FileStore`、`SvgDocumentStore` | `io`、`model`、`errors`、`ports`、`registry` |
-| `src/commands/` | 应用 | 命令层：一条命令一个类（Command 模式）、命令目录（help 的数据源）、会话（当前文档） | `Command`、`CommandCatalog`、`EditorSession`、`*Command` | `commands`、`model`、`errors`、`ports` |
+| `src/io/` | 基础设施 | SVG 序列化与解析、文件读写。**唯一**接触 XML 库（`fast-xml-parser`）与 `node:fs` 的地方 | `SvgWriter`、`SvgReader`、`XmlParser`、`FileStore`、`SvgDocumentStore` | `io`、`model`、`errors`、`ports`、`factory` |
+| `src/commands/` | 应用 | 命令层：一条命令一个类（Command 模式）、命令目录（help 的数据源）、会话（当前文档） | `Command`、`CommandCatalog`、`EditorSession`、`*Command` | `commands`、`model`、`errors`、`ports`、`factory` |
 | `src/history/` | 应用 | 撤销/重做栈与 io 锁（**S5 实现**） | `UndoStack` | `history`、`commands`、`model`、`errors` |
-| `src/registry/` | 应用 | **两处按名分派**所在：命令注册表（命令名 → 实现）、图形工厂（类型名/标签名 → 类） | `CommandRegistry`、`ShapeFactory` | `registry`、`commands`、`model`、`errors` |
+| `src/registry/` | 应用 | **第一处按名分派**：命令名 → 实现 | `CommandRegistry` | `registry`、`commands`、`model`、`errors` |
+| `src/factory/` | 应用 | **第二处按名分派**：类型名/标签名 → 类（`create` 与读文件共用） | `ShapeFactory` | `factory`、`model`、`errors` |
 | `src/cli/` | 接口 | 进程边界：REPL、分词、终端适配器、组合根 `Application`。不知道图形语义，只负责"读一行 → 执行 → 打印" | `Repl`、`Tokenizer`、`Application` | 全部 |
 
-> 前端（`cli`）→ 应用（`commands`/`history`/`registry`）→ 领域（`model`）是"向内收缩"的三层，
+> 前端（`cli`）→ 应用（`commands`/`history`/`registry`/`factory`）→ 领域（`model`）是"向内收缩"的三层，
 > `io` 是挂在旁边的适配器，`ports` 与 `errors` 是两个被各方共用的窄接口。
+>
+> `factory/` 单独成模块（S4 从 `registry/` 拆出）：`create` 命令与读文件都要用它，
+> 而 `registry/` 依赖 `commands/`（它保存命令实例），若把工厂留在 `registry/`，
+> 命令层引用工厂就会形成 `commands ↔ registry` 的环。拆成只依赖 `model`/`errors` 的独立模块后，依赖图仍然无环。
 
 #### 1.3 为什么没有 `src/geometry/` 模块
 
@@ -69,10 +74,13 @@
 
 #### 2.3 Factory（图形工厂 = 规格允许的第二处分派）
 
-`ShapeFactory` 是"类型名 → 类"的唯一映射，它同时服务两条路：
+`ShapeFactory`（`src/factory/`）是"类型名 → 类"的唯一映射，它同时服务两条路：
 读文件时的**标签名 → 类**（`<rect>` → `Rect`，未知标签 → `ForeignElement`），
-`create` 命令时的**类型名 → 类**（`create rect …`，S4）。
+`create` 命令时的**类型名 → 类**（`create rect …`，含每种类型的参数校验）。
 新增一种图形只需要动这一个文件，`switch` 的影响面被锁死在一处。
+
+它有自己的模块（S4 从 `registry/` 拆出）而不是塞进命令层或读取器，原因见 §1.2 末尾的说明：
+它是被 `commands` 与 `io` **双向共用**的窄组件，独立成模块才能让依赖图保持无环。
 
 #### 2.4 端口与适配器（六边形）
 
@@ -112,10 +120,11 @@
 | `errors` | — | 只是错误类型，谁都可以用，它不能反过来用别人 |
 | `ports` | `model`（仅类型） | 端口签名要用到 `Document`，但不能用 `io` 的实现 |
 | `model` | `model`、`errors` | 领域模型必须能被单独理解：不许 import 命令、CLI、XML、文件系统 |
-| `io` | `io`、`model`、`errors`、`ports`、`registry` | 读写要把 XML 变成模型对象，所以要用图形工厂；但**反过来不允许**：`registry` 不依赖 `io` |
-| `commands` | `commands`、`model`、`errors`、`ports` | 命令用模型做修改、用端口输出与存盘；**不许** import `cli`（那是外层）、**不许** import `io`（细节被端口挡住） |
+| `factory` | `factory`、`model`、`errors` | 只负责"名字 → 类"，不碰 IO 也不碰命令；正因为够窄，才能被两边共用 |
+| `io` | `io`、`model`、`errors`、`ports`、`factory` | 读写要把 XML 变成模型对象，所以要用图形工厂；但**反过来不允许**：`factory` 不依赖 `io` |
+| `commands` | `commands`、`model`、`errors`、`ports`、`factory` | 命令用模型做修改、用端口输出与存盘、用工厂造新元素；**不许** import `cli`（外层）、**不许** import `io`（细节被端口挡住） |
 | `history` | `history`、`commands`、`model`、`errors` | 撤销栈里存的是命令对象，所以要认识命令 |
-| `registry` | `registry`、`commands`、`model`、`errors` | 注册表要持有命令实例、工厂要造模型对象 |
+| `registry` | `registry`、`commands`、`model`、`errors` | 注册表要持有命令实例；它依赖命令，所以命令层不能反过来依赖它 |
 | `cli` | 全部 | 它是组合根，只在这里把实现装配起来 |
 
 一句话原则：**依赖只能指向更内层或更稳定的那一侧；内层不知道外层存在。**
@@ -128,10 +137,13 @@
 ```
 $ npm run arch:check
 dependency rules (module -> may import)
+  errors    -> (nothing)
+  ports     -> model
   model     -> model, errors
-  commands  -> commands, model, errors, ports
+  factory   -> factory, model, errors
+  commands  -> commands, model, errors, ports, factory
   …
-scanned 45 files under src/
+scanned 46 files under src/
 no dependency violations
 ```
 
@@ -140,7 +152,7 @@ no dependency violations
 （`model` 里 import 了 `cli`）断言它确实能抓到问题——否则"永远输出 ok"的检查脚本毫无价值。
 **模块表里没有出现的模块会被直接报错**，这样新增模块必须显式声明依赖（并同步写进本文件）。
 
-当前状态：**45 个源文件、0 违规**。
+当前状态：**46 个源文件、0 违规**。
 
 ### 4. 变化点假设
 

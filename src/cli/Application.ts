@@ -2,6 +2,7 @@ import { CanvasCommand } from '../commands/CanvasCommand.ts';
 import type { Command } from '../commands/Command.ts';
 import { CommandCatalog } from '../commands/CommandCatalog.ts';
 import type { CommandContext } from '../commands/CommandContext.ts';
+import { CreateCommand } from '../commands/CreateCommand.ts';
 import { EditorSession } from '../commands/EditorSession.ts';
 import { HelpCommand } from '../commands/HelpCommand.ts';
 import { InitCommand } from '../commands/InitCommand.ts';
@@ -59,6 +60,13 @@ export class Application {
 
   /** Every command of the editor; the list grows stage by stage (see docs/plan.md). */
   static #commands(): Command[] {
-    return [new HelpCommand(), new InitCommand(), new CanvasCommand(), new ReadCommand(), new SaveCommand()];
+    return [
+      new HelpCommand(),
+      new InitCommand(),
+      new CanvasCommand(),
+      new ReadCommand(),
+      new SaveCommand(),
+      new CreateCommand(),
+    ];
   }
 }

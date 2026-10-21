@@ -44,13 +44,14 @@ export class ArchitectureChecker {
     { module: 'errors', allowed: [] },
     { module: 'ports', allowed: ['model'] },
     { module: 'model', allowed: ['model', 'errors'] },
-    { module: 'io', allowed: ['io', 'model', 'errors', 'ports', 'registry'] },
-    { module: 'commands', allowed: ['commands', 'model', 'errors', 'ports'] },
+    { module: 'factory', allowed: ['factory', 'model', 'errors'] },
+    { module: 'io', allowed: ['io', 'model', 'errors', 'ports', 'factory'] },
+    { module: 'commands', allowed: ['commands', 'model', 'errors', 'ports', 'factory'] },
     { module: 'history', allowed: ['history', 'commands', 'model', 'errors'] },
     { module: 'registry', allowed: ['registry', 'commands', 'model', 'errors'] },
     {
       module: 'cli',
-      allowed: ['cli', 'commands', 'registry', 'history', 'io', 'model', 'errors', 'ports'],
+      allowed: ['cli', 'commands', 'registry', 'history', 'io', 'model', 'errors', 'ports', 'factory'],
     },
   ];
 

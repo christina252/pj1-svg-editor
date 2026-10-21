@@ -17,7 +17,8 @@ package "接口层 interface" as iface {
 package "应用层 application" as app {
   [commands\n一条命令一个类 · 命令目录 · 会话] as commands
   [history\n撤销/重做栈（S5 实现）] as history
-  [registry\n命令注册表 · 图形工厂] as registry
+  [registry\n命令注册表] as registry
+  [factory\n图形工厂：类型名/标签名 → 类] as factory
 }
 
 package "领域层 domain" as domain {
@@ -40,19 +41,21 @@ cli --> ports
 commands --> model : Composite 操作
 commands --> ports
 commands --> errors
+commands --> factory
 registry --> commands
-registry --> model : 类型名 → 类
 history --> commands
 history --> model
+factory --> model : 类型名 → 类
 io --> model
 io --> ports
-io --> registry
+io --> factory
 model --> errors
 
 note bottom of domain
   依赖方向规则：内层不认识外层。
   model 不依赖 commands/cli/io；
-  commands 不依赖 cli/io（通过 ports 反转）。
+  commands 不依赖 cli/io（通过 ports 反转）；
+  io 与 commands 都依赖 factory，反过来不成立。
   由 tools/ArchitectureChecker.ts 自动校验。
 end note
 @enduml
